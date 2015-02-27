@@ -3,7 +3,7 @@ import math
 
 def sign(num):
     """Returns -1 or 1 depending on sign of passed number"""
-    return int(math.copysign(1, num))
+    return int(math.copysign(1, float(num)))
 
 
 def afb(a, b, c):
