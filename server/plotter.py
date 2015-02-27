@@ -1,4 +1,3 @@
-from enum import Enum
 from mathextra import *
 import RPi.GPIO as GPIO
 from time import sleep
