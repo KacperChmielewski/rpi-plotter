@@ -35,3 +35,9 @@ def ltc(l, m1p, m2p):
     pa = math.cos(rgamma)*l[0]
     pb = math.sqrt(l[0]**2 - pa**2)
     return round(pb+m1p[0], nround), round(pa+m1p[1], nround)
+
+
+class Point:
+    def __init__(self, x=0, y=0):
+        self.x = x
+        self.y = y
