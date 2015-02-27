@@ -160,15 +160,15 @@ class Plotter:
 
             mot.move(int(part[1]), float(part[2]))
         elif part[0] == 'V':
-            self.move_vertical(part[1], part[2])
+            self.move_vertical(int(part[1]), float(part[2]))
         elif part[0] == 'H':
-            self.move_horizontal(part[1], part[2])
+            self.move_horizontal(int(part[1]), float(part[2]))
         elif part[0] == 'S':
             self.separator.set(int(part[1]))
         elif part[0] == 'P':
             sleep(float(part[1]))
         elif part[0] == 'C':
-            self.calibrate(part[1], part[2])
+            self.calibrate(int(part[1]), int(part[2]))
             return self.length
         elif part[0] == 'COR':
             if self.calibrated:
