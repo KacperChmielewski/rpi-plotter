@@ -162,6 +162,7 @@ namespace RPiPlotter
 			w6.Position = 1;
 			// Container child commandhbox.Gtk.Box+BoxChild
 			this.sendcommandButton = new global::Gtk.Button ();
+			this.sendcommandButton.CanDefault = true;
 			this.sendcommandButton.CanFocus = true;
 			this.sendcommandButton.Name = "sendcommandButton";
 			this.sendcommandButton.UseUnderline = true;
@@ -197,10 +198,14 @@ namespace RPiPlotter
 			}
 			this.DefaultWidth = 448;
 			this.DefaultHeight = 299;
+			this.sendcommandButton.HasDefault = true;
 			this.Show ();
 			this.DeleteEvent += new global::Gtk.DeleteEventHandler (this.OnQuit);
 			this.connectAction.Activated += new global::System.EventHandler (this.OnConnectActionActivated);
+			this.disconnectAction.Activated += new global::System.EventHandler (this.OnDisconnectActionActivated);
 			this.quitAction.Activated += new global::System.EventHandler (this.OnQuit);
+			this.commandEntry.Activated += new global::System.EventHandler (this.OnCommandEntryActivated);
+			this.sendcommandButton.Clicked += new global::System.EventHandler (this.OnSendcommandButtonClicked);
 		}
 	}
 }

@@ -52,6 +52,7 @@
         <property name="Sensitive">False</property>
         <property name="ShortLabel" translatable="yes">Disconnect</property>
         <property name="StockId">gtk-disconnect</property>
+        <signal name="Activated" handler="OnDisconnectActionActivated" />
       </action>
       <action id="quitAction">
         <property name="Type">Action</property>
@@ -191,6 +192,7 @@
                         <property name="CanFocus">True</property>
                         <property name="IsEditable">True</property>
                         <property name="InvisibleChar">●</property>
+                        <signal name="Activated" handler="OnCommandEntryActivated" />
                       </widget>
                       <packing>
                         <property name="Position">1</property>
@@ -200,10 +202,13 @@
                     <child>
                       <widget class="Gtk.Button" id="sendcommandButton">
                         <property name="MemberName" />
+                        <property name="CanDefault">True</property>
+                        <property name="HasDefault">True</property>
                         <property name="CanFocus">True</property>
                         <property name="Type">TextOnly</property>
                         <property name="Label" translatable="yes">Send</property>
                         <property name="UseUnderline">True</property>
+                        <signal name="Clicked" handler="OnSendcommandButtonClicked" />
                       </widget>
                       <packing>
                         <property name="Position">2</property>
@@ -393,6 +398,7 @@
           <widget class="Gtk.Button" id="buttonOk">
             <property name="MemberName" />
             <property name="CanDefault">True</property>
+            <property name="HasDefault">True</property>
             <property name="CanFocus">True</property>
             <property name="UseStock">True</property>
             <property name="Type">StockItem</property>

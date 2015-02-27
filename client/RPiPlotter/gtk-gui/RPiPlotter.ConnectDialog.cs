@@ -132,6 +132,7 @@ namespace RPiPlotter
 			}
 			this.DefaultWidth = 455;
 			this.DefaultHeight = 91;
+			this.buttonOk.HasDefault = true;
 			this.Show ();
 			this.Response += new global::Gtk.ResponseHandler (this.OnResponse);
 			this.portEntry.Changed += new global::System.EventHandler (this.OnPortEntryChanged);

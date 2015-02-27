@@ -13,6 +13,7 @@ namespace RPiPlotter
 			: base ("", parent, Gtk.DialogFlags.DestroyWithParent)
 		{
 			this.Build ();
+			buttonOk.GrabFocus ();
 		}
 
 		void OnResponse(object sender, Gtk.ResponseArgs args)
