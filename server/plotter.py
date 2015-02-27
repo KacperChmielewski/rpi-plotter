@@ -9,13 +9,8 @@ class NotCalibratedException(Exception):
         return "Plotter is not calibrated!"
 
 
-class A4988Direction(Enum):
-    FORWARD = 1,
-    BACKWARD = 0
-
-
 class A4988:
-    _direction = A4988Direction.FORWARD
+    _direction = 1
 
     def __init__(self, steppin, directionpin, enablepin, resetpin, sleeppin, spr=200, ms=16):
         self.directionPin = directionpin
@@ -98,11 +93,11 @@ class Plotter:
 
     def move_vertical(self, steps, speed):
         if sign(steps) == 1:
-            self.left_engine.direction = A4988Direction.FORWARD
-            self.right_engine.direction = A4988Direction.FORWARD
+            self.left_engine.direction = 1
+            self.right_engine.direction = 1
         else:
-            self.left_engine.direction = A4988Direction.BACKWARD
-            self.right_engine.direction = A4988Direction.BACKWARD
+            self.left_engine.direction = 0
+            self.right_engine.direction = 0
 
         speed *= 2
         for i in range(abs(int(steps))):
@@ -111,11 +106,11 @@ class Plotter:
 
     def move_horizontal(self, steps, speed):
         if sign(steps) == 1:
-            self.left_engine.direction = A4988Direction.FORWARD
-            self.right_engine.direction = A4988Direction.BACKWARD
+            self.left_engine.direction = 1
+            self.right_engine.direction = 0
         else:
-            self.left_engine.direction = A4988Direction.BACKWARD
-            self.right_engine.direction = A4988Direction.FORWARD
+            self.left_engine.direction = 0
+            self.right_engine.direction = 1
 
         speed *= 2
         for i in range(abs(int(steps))):
@@ -160,9 +155,9 @@ class Plotter:
                 mot = self.right_engine
 
             if sign(int(part[1])) == 1:
-                mot.direction = A4988Direction.FORWARD
+                mot.direction = 1
             else:
-                mot.direction = A4988Direction.BACKWARD
+                mot.direction = 0
 
             mot.move(int(part[1]), float(part[2]))
         elif part[0] == 'V':
