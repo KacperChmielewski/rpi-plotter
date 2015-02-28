@@ -3,9 +3,14 @@ import RPi.GPIO as GPIO
 from time import sleep
 
 
-class NotCalibratedException(Exception):
+class NotCalibratedError(Exception):
     def __str__(self):
         return "Plotter is not calibrated!"
+
+
+class BadCommandError(Exception):
+    def __str__(self):
+        return "Bad command!"
 
 
 class A4988:
@@ -118,7 +123,7 @@ class Plotter:
 
     def goto(self, x, y, speed):
         if not self.calibrated:
-            raise NotCalibratedException()
+            raise NotCalibratedError()
 
         gleft = int(x)
         gright = int(y)
@@ -174,14 +179,14 @@ class Plotter:
             if self.calibrated:
                 return ltc(len, self.m1, self.m2)
             else:
-                return "not calibrated"
+                raise NotCalibratedError()
         elif part[0] == 'LEN':
             return self.length
         elif part[0] == 'GOTO':  # Actually move to spec. position
             if self.calibrated:
                 self.goto(part[1], part[2], part[3])
             else:
-                return "not calibrated"
+                raise NotCalibratedError()
         else:
-            return 'bad command'
+            raise BadCommandError()
         return ""
