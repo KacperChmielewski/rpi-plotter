@@ -88,7 +88,7 @@ class Plotter:
         self.left_engine = A4988(7, 8, 23, 24, 25)
         self.left_engine.power(True)
         print("Initializing separator...")
-        self.separator = Servo(14)
+        self.separator = Servo(11)
 
     def move_vertical(self, steps, speed):
         if sign(steps) == 1:
