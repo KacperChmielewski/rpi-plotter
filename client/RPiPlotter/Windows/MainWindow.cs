@@ -7,23 +7,34 @@ namespace RPiPlotter
 	{
 		ListStore commandListStore;
 		Connector connector;
+		Gdk.Pixbuf donePixbuf, errorPixbuf, executingPixbuf;
 
 		public MainWindow() :
 			base (WindowType.Toplevel)
 		{
 			this.Build ();
 			this.SetupCommandTreeView ();
+			this.LoadIcons ();
 		}
 
 		void SetupCommandTreeView()
 		{
-			commandListStore = new ListStore (typeof(Gdk.Pixbuf), typeof(string), typeof(string));
+			commandListStore = new ListStore (typeof(Gdk.Pixbuf), typeof(string), typeof(string), typeof(bool));
 			commandTreeView.Model = commandListStore;
 
 			// Add the columns to the TreeView
 			commandTreeView.AppendColumn ("Status", new CellRendererPixbuf (), "pixbuf", 0);
 			commandTreeView.AppendColumn ("Command", new CellRendererText (), "text", 1);
 			commandTreeView.AppendColumn ("Time", new CellRendererText (), "text", 2);
+		}
+
+		void LoadIcons()
+		{
+			var iconTheme = new IconTheme ();
+
+			donePixbuf = iconTheme.LoadIcon ("gtk-apply", 16, IconLookupFlags.NoSvg);
+			errorPixbuf = new Gdk.Pixbuf ("Icons/error.png");
+			executingPixbuf = new Gdk.Pixbuf ("Icons/execute.png");
 		}
 
 		void OnQuit(object o, EventArgs args)
@@ -48,6 +59,7 @@ namespace RPiPlotter
 				connector.Disconnected += OnConnectorDisconnected;
 				connector.CommandDone += HandleCommandDone;
 				connector.CommandFail += HandleCommandFail;
+				connector.CommandExecuting += HandleCommandExecuting;
 				try {
 					connector.Connect ();
 				} catch (Exception ex) {
@@ -73,8 +85,7 @@ namespace RPiPlotter
 
 		void OnConnectorConnectionError(object sender, UnhandledExceptionEventArgs e)
 		{
-			disconnectAction.Sensitive = false;
-			contentvbox.Sensitive = false;
+			DisconnectUIChange ();
 			var dialog = new Gtk.MessageDialog (this,
 				             Gtk.DialogFlags.DestroyWithParent,
 				             Gtk.MessageType.Error,
@@ -84,10 +95,16 @@ namespace RPiPlotter
 			dialog.Destroy ();
 		}
 
-		void OnConnectorDisconnected(object sender, EventArgs e)
+		void DisconnectUIChange()
 		{
 			disconnectAction.Sensitive = false;
 			contentvbox.Sensitive = false;
+			commandListStore.Clear ();
+		}
+
+		void OnConnectorDisconnected(object sender, EventArgs e)
+		{
+			DisconnectUIChange ();
 		}
 
 		protected void OnDisconnectActionActivated(object sender, EventArgs e)
@@ -99,12 +116,10 @@ namespace RPiPlotter
 		{
 			if (string.IsNullOrWhiteSpace (commandEntry.Text))
 				return;
-			var command = commandEntry.Text.Trim ();
+			var command = commandEntry.Text.Trim ().ToUpper ();
 			connector.Send (command);
 			commandEntry.Text = "";
-			var iconTheme = new IconTheme ();
-			var pixbuf = iconTheme.LoadIcon ("gtk-no", 16, IconLookupFlags.NoSvg);
-			var iter = commandListStore.AppendValues (pixbuf, command);
+			var iter = commandListStore.AppendValues (null, command);
 			commandTreeView.ScrollToCell (commandListStore.GetPath (iter), commandTreeView.Columns [0], true, 0, 0);
 		}
 
@@ -121,6 +136,17 @@ namespace RPiPlotter
 
 		void HandleCommandFail(object sender, CommandEventArgs e)
 		{
+			var index = 0;
+			foreach (object[] row in commandListStore) {
+				if (e.Command.Equals (row [1]) && row [0] == executingPixbuf) {
+					break;
+				}
+				index++;
+			}
+			TreeIter iter;
+			if (commandListStore.GetIterFromString (out iter, index.ToString ())) {
+				commandListStore.SetValue (iter, 0, errorPixbuf);
+			}
 			if (!string.IsNullOrEmpty (e.Message)) {
 				var dialog = new Gtk.MessageDialog (this,
 					             Gtk.DialogFlags.DestroyWithParent, 
@@ -130,10 +156,31 @@ namespace RPiPlotter
 				dialog.Run ();
 				dialog.Destroy ();
 			}
+			index = 0;
+			foreach (object[] row in commandListStore) {
+				if (row [0] == null) {
+					if (commandListStore.GetIterFromString (out iter, index.ToString ())) {
+						commandListStore.SetValue (iter, 0, errorPixbuf);
+					}
+				}
+				index++;
+			}
 		}
 
 		void HandleCommandDone(object sender, CommandDoneEventArgs e)
 		{
+			var index = 0;
+			foreach (object[] row in commandListStore) {
+				if (e.Command.Equals (row [1]) && row [0] == executingPixbuf) {
+					break;
+				}
+				index++;
+			}
+			TreeIter iter;
+			if (commandListStore.GetIterFromString (out iter, index.ToString ())) {
+				commandListStore.SetValue (iter, 0, donePixbuf);
+				commandListStore.SetValue (iter, 2, e.ExecutionTime);
+			}
 			if (!string.IsNullOrEmpty (e.Message)) {
 				var dialog = new Gtk.MessageDialog (this,
 					             Gtk.DialogFlags.DestroyWithParent, 
@@ -143,14 +190,21 @@ namespace RPiPlotter
 				dialog.Run ();
 				dialog.Destroy ();
 			}
-			var count = 0;
-			var lastIndex = 0;
-			foreach (object[] row in commandListStore) {
-				if (row [1] == e.Command)
-					lastIndex = count;
-				count++;
-			}
+		}
 
+		void HandleCommandExecuting(object sender, CommandEventArgs e)
+		{
+			var index = 0;
+			foreach (object[] row in commandListStore) {
+				if (e.Command.Equals (row [1]) && row [0] == null) {
+					break;
+				}
+				index++;
+			}
+			TreeIter iter;
+			if (commandListStore.GetIterFromString (out iter, index.ToString ())) {
+				commandListStore.SetValue (iter, 0, executingPixbuf);
+			}
 		}
 	}
 }

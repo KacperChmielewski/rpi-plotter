@@ -25,6 +25,7 @@ namespace RPiPlotter
 		public event EventHandler Connected;
 		public event EventHandler Disconnected;
 		public event UnhandledExceptionEventHandler ConnectionError;
+		public event CommandEventHandler CommandExecuting;
 		public event CommandEventHandler CommandFail;
 		public event CommandDoneEventHandler CommandDone;
 
@@ -51,39 +52,46 @@ namespace RPiPlotter
 			receiverThread = new Thread (() => {
 				var stream = client.GetStream ();
 				while (receiverThread.ThreadState != ThreadState.AbortRequested) {
-					if (stream.DataAvailable) {
-						var readBuffer = new byte[1024];
-						int bytesCount = stream.Read (readBuffer, 0, readBuffer.Length);
-						if (bytesCount == 0) {
-							Disconnect ();
-							return;
-						}
-						string msg = Encoding.UTF8.GetString (readBuffer, 0, bytesCount);
+					var readBuffer = new byte[1024];
+					int bytesCount = 0;
+					try {
+						bytesCount = stream.Read (readBuffer, 0, readBuffer.Length);
+					} catch (Exception ex) {
+						return;
+					}
+					if (bytesCount == 0) {
+						Disconnect ();
+						return;
+					}
+					string msg = Encoding.UTF8.GetString (readBuffer, 0, bytesCount);
 						if (!msg.Contains ("|"))
-							continue;
+						continue;
 
-						var msgParts = msg.Split ('|');
-						if (msgParts [0] == "OK") {
-							if (CommandDone != null) {
-								CommandDoneEventArgs commandArgs = null;
-								commandArgs = msgParts.Length == 4 ?
+					var msgParts = msg.Split ('|');
+					if (msgParts [0] == "OK") {
+						if (CommandDone != null) {
+							CommandDoneEventArgs commandArgs = null;
+							commandArgs = msgParts.Length == 4 ?
 									new CommandDoneEventArgs (msgParts [1], msgParts [2], msgParts [3]) : 
 									new CommandDoneEventArgs (msgParts [1], msgParts [2]);
 
-								Gtk.Application.Invoke ((sender, e) => CommandDone (this, commandArgs));
-							}
-						} else if (msgParts [0] == "ERR") {
-							if (CommandFail != null) {
-								CommandEventArgs commandArgs = null;
-								commandArgs = msgParts.Length == 3 ?
+							Gtk.Application.Invoke ((sender, e) => CommandDone (this, commandArgs));
+						}
+					} else if (msgParts [0] == "ERR") {
+						if (CommandFail != null) {
+							CommandEventArgs commandArgs = null;
+							commandArgs = msgParts.Length == 3 ?
 									new CommandEventArgs (msgParts [1], msgParts [2]) : 
 									new CommandEventArgs (msgParts [1]);
 
-								Gtk.Application.Invoke ((sender, e) => CommandFail (this, commandArgs));
-							}
+							Gtk.Application.Invoke ((sender, e) => CommandFail (this, commandArgs));
+						}
+					} else if (msgParts [0] == "EXEC") {
+						if (CommandExecuting != null) {
+							CommandEventArgs commandArgs = new CommandEventArgs (msgParts [1]);
+							Gtk.Application.Invoke ((sender, e) => CommandExecuting (this, commandArgs));
 						}
 					}
-					Thread.Sleep (10);
 				}
 			});
 			receiverThread.Start ();
