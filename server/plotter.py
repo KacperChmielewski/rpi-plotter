@@ -13,6 +13,41 @@ class BadCommandError(Exception):
         return "Bad command!"
 
 
+class SN74HC595:
+        def __init__(self, data, clock, latch, count=1):
+                self.data = data
+                self.clock = clock
+                self.latch = latch
+                self.count = count
+                self.t = 0
+                GPIO.setup(data, GPIO.OUT)
+                GPIO.setup(clock, GPIO.OUT)
+                GPIO.setup(latch, GPIO.OUT)
+                self.pin = range(count*8)
+                for p in self.pin:
+                        self.pin[p] = False
+        def cmd(self, cmd):
+                for state in str(cmd):
+                        GPIO.output(self.data, int(state))
+                        GPIO.output(self.clock, True)
+                        sleep(self.t)
+                        GPIO.output(self.clock, False)
+                GPIO.output(self.latch, True)
+                sleep(self.t)
+                GPIO.output(self.latch, False)
+
+        def output(self, pin, state):
+                if pin >= self.count*8:
+                        return False
+                else:
+                        output = ''
+                        self.pin[pin] = state
+                        for ps in self.pin: #ps Pin State
+                                output = str(int(ps)) + output
+                        self.cmd(output)
+
+
+
 class A4988:
     _direction = 1
 
