@@ -22,7 +22,8 @@ var/
 *.egg
 # PyInstaller
 # Usually these files are written by a python script from a template
-# before PyInstaller builds the exe, so as to inject date/other infos into it.
+# before PyInstaller builds the exe, so as to inject date/other infos 
+into it.
 *.manifest
 *.spec
 # Installer logs
@@ -152,8 +153,10 @@ publish/
 # Publish Web Output
 *.[Pp]ublish.xml
 *.azurePubxml
-# TODO: Comment the next line if you want to checkin your web deploy settings
-# but database connection strings (with potential passwords) will be unencrypted
+# TODO: Comment the next line if you want to checkin your web deploy 
+settings
+# but database connection strings (with potential passwords) will be 
+unencrypted
 *.pubxml
 *.publishproj
 # NuGet Packages
@@ -162,7 +165,8 @@ publish/
 **/packages/*
 # except build/, which is used as an MSBuild target.
 !**/packages/build/
-# Uncomment if necessary however generally it will be regenerated when needed
+# Uncomment if necessary however generally it will be regenerated when 
+needed
 #!**/packages/repositories.config
 # Windows Azure Build Output
 csx/
@@ -206,5 +210,5 @@ FakesAssemblies/
 # Visual Studio 6 workspace options file
 *.opt
 
-
 server/plotter_fake.py
+.idea/
