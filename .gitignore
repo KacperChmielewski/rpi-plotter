@@ -211,3 +211,4 @@ FakesAssemblies/
 *.opt
 
 server/plotter_fake.py
+.idea/
