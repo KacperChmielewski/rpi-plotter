@@ -67,11 +67,11 @@ namespace RPiPlotter
 			w1.Add (this.HelpAction, null);
 			this.connectAction = new global::Gtk.Action ("connectAction", global::Mono.Unix.Catalog.GetString ("Connect..."), null, "gtk-connect");
 			this.connectAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("Connect...");
-			w1.Add (this.connectAction, "<Primary><Mod2>c");
+			w1.Add (this.connectAction, null);
 			this.disconnectAction = new global::Gtk.Action ("disconnectAction", global::Mono.Unix.Catalog.GetString ("Disconnect"), null, "gtk-disconnect");
 			this.disconnectAction.Sensitive = false;
 			this.disconnectAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("Disconnect");
-			w1.Add (this.disconnectAction, "<Primary><Mod2>d");
+			w1.Add (this.disconnectAction, null);
 			this.quitAction = new global::Gtk.Action ("quitAction", global::Mono.Unix.Catalog.GetString ("Quit"), null, "gtk-quit");
 			this.quitAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("Quit");
 			w1.Add (this.quitAction, "<Primary><Mod2>q");
