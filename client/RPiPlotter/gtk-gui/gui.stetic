@@ -39,7 +39,6 @@
       </action>
       <action id="connectAction">
         <property name="Type">Action</property>
-        <property name="Accelerator">&lt;Primary&gt;&lt;Mod2&gt;c</property>
         <property name="Label" translatable="yes">Connect...</property>
         <property name="ShortLabel" translatable="yes">Connect...</property>
         <property name="StockId">gtk-connect</property>
@@ -47,7 +46,6 @@
       </action>
       <action id="disconnectAction">
         <property name="Type">Action</property>
-        <property name="Accelerator">&lt;Primary&gt;&lt;Mod2&gt;d</property>
         <property name="Label" translatable="yes">Disconnect</property>
         <property name="Sensitive">False</property>
         <property name="ShortLabel" translatable="yes">Disconnect</property>
