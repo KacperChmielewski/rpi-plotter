@@ -12,7 +12,6 @@ class BadCommandError(Exception):
     def __str__(self):
         return "Bad command!"
 
-
 class SN74HC595:
         def __init__(self, data, clock, latch, count=1):
                 self.data = data
@@ -25,7 +24,7 @@ class SN74HC595:
                 GPIO.setup(latch, GPIO.OUT)
                 GPIO.output(latch, False)
                 GPIO.output(clock, False)
-                self.pin = range(count*8)
+                self.pin = list(range(count*8))
                 for p in self.pin:
                         self.pin[p] = False
         def cmd(self, cmd):
@@ -39,17 +38,25 @@ class SN74HC595:
                 sleep(self.t)
                 GPIO.output(self.latch, False)
 
-        def output(self, pin, state):
-                if pin >= self.count*8:
-                        return False
-                else:
+        def state(self, pin):
+                return self.pin[pin]
+
+        def update(self):
                         output = ''
-                        self.pin[pin] = state
                         for ps in self.pin: #ps Pin State
                                 output = str(int(ps)) + output
                         self.cmd(output)
+                        return True
 
-
+        def output(self, *states):
+                if type(states[0]) is not list:
+                     nope = ([[stetes[0], states[1]]])
+                for out in states:
+                     if out[0] >= self.count*8:
+                         return False #pin out of range #todo state is not 0 or 1
+                     self.pin[out[0]] = out[1]
+                self.update()
+                return True
 
 class A4988:
     _direction = 1
@@ -73,7 +80,6 @@ class A4988:
         # GPIO.output(self.enablePin, not status)
         # GPIO.output(self.resetPin, not status)
         # GPIO.output(self.sleepPin, status)
-        sleep(1)
         return True
 
     def move(self, steps, speed):  # speed - revolution per second
@@ -126,6 +132,9 @@ class Plotter:
     def __init__(self):
         GPIO.setmode(GPIO.BOARD)
         GPIO.setwarnings(False)
+        print("Initializing shift register")
+        self.sf = SN74HC595(15, 11, 13, 2)
+
         print("Initializing right engine...")
         self.right_engine = A4988(16, 18, 8, 7, 25)
         self.right_engine.power(True)
