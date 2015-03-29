@@ -23,6 +23,8 @@ class SN74HC595:
                 GPIO.setup(data, GPIO.OUT)
                 GPIO.setup(clock, GPIO.OUT)
                 GPIO.setup(latch, GPIO.OUT)
+                GPIO.output(latch, False)
+                GPIO.output(clock, False)
                 self.pin = range(count*8)
                 for p in self.pin:
                         self.pin[p] = False
@@ -32,6 +34,7 @@ class SN74HC595:
                         GPIO.output(self.clock, True)
                         sleep(self.t)
                         GPIO.output(self.clock, False)
+                        sleep(self.t)
                 GPIO.output(self.latch, True)
                 sleep(self.t)
                 GPIO.output(self.latch, False)
@@ -51,12 +54,13 @@ class SN74HC595:
 class A4988:
     _direction = 1
 
-    def __init__(self, steppin, directionpin, enablepin, resetpin, sleeppin, spr=200, ms=16):
+    def __init__(self, steppin, directionpin, enablepin, resetpin, sleeppin, revdir=False, spr=200, ms=16):
         self.directionPin = directionpin
         self.stepPin = steppin
         self.enablePin = enablepin
         self.resetPin = resetpin
         self.sleepPin = sleeppin
+        self.revdir = revdir
         self.spr = spr
         self.ms = ms
         GPIO.setup(self.directionPin, GPIO.OUT)
@@ -87,6 +91,7 @@ class A4988:
     @direction.setter
     def direction(self, value):
         self._direction = value
+        if self.revdir: value = not value
         GPIO.output(self.directionPin, value)
 
 
@@ -119,16 +124,16 @@ class Plotter:
     right_engine, left_engine = None, None
 
     def __init__(self):
-        GPIO.setmode(GPIO.BCM)
+        GPIO.setmode(GPIO.BOARD)
         GPIO.setwarnings(False)
         print("Initializing right engine...")
-        self.right_engine = A4988(24, 23, 8, 7, 25)
+        self.right_engine = A4988(16, 18, 8, 7, 25)
         self.right_engine.power(True)
         print("Initializing left engine...")
-        self.left_engine = A4988(7, 8, 23, 24, 25)
+        self.left_engine = A4988(24, 26, 23, 24, 25, True)
         self.left_engine.power(True)
         print("Initializing separator...")
-        self.separator = Servo(11)
+        self.separator = Servo(23)
 
     def move_vertical(self, steps, speed):
         if sign(steps) == 1:
@@ -156,12 +161,9 @@ class Plotter:
             self.left_engine.move(1, speed)
             self.right_engine.move(1, speed)
 
-    def goto(self, x, y, speed):
-        if not self.calibrated:
-            raise NotCalibratedError()
-
-        gleft = int(x)
-        gright = int(y)
+    def move_both(self, left, right, speed):
+        gleft = int(left)
+        gright = int(right)
         if gleft == 0 or gright == 0:
             # move
             self.left_engine.move(gleft, float(speed))
@@ -172,6 +174,8 @@ class Plotter:
             done = 0
             ldir = sign(gleft)  # Left Direction
             rdir = sign(gright)  # Right Direction
+            print(ldir)
+            print(rdir)
             for i in range(1, abs(gright)+1):
                 # print('R')
                 self.right_engine.move(rdir, float(speed))
@@ -181,6 +185,10 @@ class Plotter:
                 self.left_engine.move(ldir*td, float(speed))
                 done = htbd
 
+    def goto(self, x, y, speed):
+        if not self.calibrated:
+            raise NotCalibratedError()
+        #here will be some lines of code
     def calibrate(self, x, y):
         self.length = ctl((int(x), int(y)), self.m1, self.m2)
         self.calibrated = True
@@ -207,6 +215,8 @@ class Plotter:
             self.separator.set(int(part[1]))
         elif part[0] == 'P':
             sleep(float(part[1]))
+        elif part[0] == 'B':
+            self.move_both(int(part[1]), int(part[2]), float(part[3]))
         elif part[0] == 'C':
             self.calibrate(int(part[1]), int(part[2]))
             return self.length
