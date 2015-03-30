@@ -61,17 +61,27 @@ class SN74HC595:
 class A4988:
     _direction = 1
 
-    def __init__(self, steppin, directionpin, enablepin, resetpin, sleeppin, revdir=False, spr=200, ms=16):
+    def __init__(self, directionpin, steppin, sleeppin, resetpin, ms3pin, ms2pin, ms1pin, enablepin, revdir=False, spr=200, ms=16):
         self.directionPin = directionpin
         self.stepPin = steppin
-        self.enablePin = enablepin
-        self.resetPin = resetpin
         self.sleepPin = sleeppin
+        self.resetPin = resetpin
+        self.ms3pin = ms3pin
+        self.ms2pin = ms2pin
+        self.ms1pin = ms1pin
+        self.enablePin = enablepin
         self.revdir = revdir
         self.spr = spr
         self.ms = ms
+        mode = {1: '000', 2: '100', 4: '010', 8: '110', 16: '111'}
+        print(mode[ms])
+        print ('ms1 '+ str(mode[ms][0]))
+        print ('ms2 '+ str(mode[ms][1]))
+        print ('ms3 '+ str(mode[ms][2]))
+
         GPIO.setup(self.directionPin, GPIO.OUT)
         GPIO.setup(self.stepPin, GPIO.OUT)
+#        sf.output(1, 1)
         # GPIO.setup(self.enablePin, GPIO.OUT)
         # GPIO.setup(self.resetPin, GPIO.OUT)
         # GPIO.setup(self.sleepPin, GPIO.OUT)
@@ -135,12 +145,13 @@ class Plotter:
         print("Initializing shift register")
         self.sf = SN74HC595(15, 11, 13, 2)
 
-        print("Initializing right engine...")
-        self.right_engine = A4988(16, 18, 8, 7, 25)
-        self.right_engine.power(True)
         print("Initializing left engine...")
-        self.left_engine = A4988(24, 26, 23, 24, 25, True)
+        self.left_engine = A4988(26, 24, 14, 13, 12, 11, 10, 9, True)
         self.left_engine.power(True)
+        print("Initializing right engine...")
+        self.right_engine = A4988(18, 16, 6, 5, 4, 3, 2, 1)
+        self.right_engine.power(True)
+
         print("Initializing separator...")
         self.separator = Servo(23)
 
