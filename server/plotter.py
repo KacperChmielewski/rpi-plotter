@@ -12,7 +12,7 @@ class BadCommandError(Exception):
     def __str__(self):
         return "Bad command!"
 
-class SN74HC595:
+class ShiftRegister:
         def __init__(self, data, clock, latch, count=1):
                 self.data = data
                 self.clock = clock
@@ -81,7 +81,7 @@ class A4988:
 
         GPIO.setup(self.directionPin, GPIO.OUT)
         GPIO.setup(self.stepPin, GPIO.OUT)
-#        sf.output(1, 1)
+#        sr.output(1, 1)
         # GPIO.setup(self.enablePin, GPIO.OUT)
         # GPIO.setup(self.resetPin, GPIO.OUT)
         # GPIO.setup(self.sleepPin, GPIO.OUT)
@@ -143,7 +143,7 @@ class Plotter:
         GPIO.setmode(GPIO.BOARD)
         GPIO.setwarnings(False)
         print("Initializing shift register")
-        self.sf = SN74HC595(15, 11, 13, 2)
+        self.sr = ShiftRegister(15, 11, 13, 2)
 
         print("Initializing left engine...")
         self.left_engine = A4988(26, 24, 14, 13, 12, 11, 10, 9, True)
