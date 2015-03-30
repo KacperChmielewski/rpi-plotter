@@ -1,11 +1,13 @@
 from plotter import Plotter
 from time import sleep
 
-if True:
+commandsFile = open('print.plo', 'r')
+
+
+if commandsFile:
 
     plotter = Plotter()
    
-    commandsFile = open('print.plo', 'r')
     commandsRaw = commandsFile.read()
     commandsFile.close()
 
