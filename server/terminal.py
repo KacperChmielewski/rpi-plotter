@@ -1,7 +1,7 @@
-from plotter import Plotter
+from hardware import Plotter
 
 if __name__ == "__main__":
-    print("RPi Plotter Interactive Terminal\n")
+    print("vPlotter Interactive Terminal\n")
 
     plotter = Plotter()
     print("Ready")

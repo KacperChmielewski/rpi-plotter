@@ -4,7 +4,7 @@ import threading
 import time
 import signal
 import sys
-from plotter import Plotter, BadCommandError, NotCalibratedError
+from hardware import Plotter, BadCommandError, NotCalibratedError
 
 queue = Queue()
 

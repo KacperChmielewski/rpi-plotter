@@ -12,51 +12,53 @@ class BadCommandError(Exception):
     def __str__(self):
         return "Bad command!"
 
+
 class ShiftRegister:
         def __init__(self, data, clock, latch, count=1):
-                self.data = data
-                self.clock = clock
-                self.latch = latch
-                self.count = count
-                self.t = 0
-                GPIO.setup(data, GPIO.OUT)
-                GPIO.setup(clock, GPIO.OUT)
-                GPIO.setup(latch, GPIO.OUT)
-                GPIO.output(latch, False)
-                GPIO.output(clock, False)
-                self.pin = list(range(count*8))
-                for p in self.pin:
-                        self.pin[p] = False
+            self.data = data
+            self.clock = clock
+            self.latch = latch
+            self.count = count
+            self.t = 0
+            GPIO.setup(data, GPIO.OUT)
+            GPIO.setup(clock, GPIO.OUT)
+            GPIO.setup(latch, GPIO.OUT)
+            GPIO.output(latch, False)
+            GPIO.output(clock, False)
+            self.pin = list(range(count*8))
+            for p in self.pin:
+                    self.pin[p] = False
+
         def cmd(self, cmd):
-                for state in str(cmd):
-                        GPIO.output(self.data, int(state))
-                        GPIO.output(self.clock, True)
-                        sleep(self.t)
-                        GPIO.output(self.clock, False)
-                        sleep(self.t)
-                GPIO.output(self.latch, True)
+            for state in str(cmd):
+                GPIO.output(self.data, int(state))
+                GPIO.output(self.clock, True)
                 sleep(self.t)
-                GPIO.output(self.latch, False)
+                GPIO.output(self.clock, False)
+                sleep(self.t)
+            GPIO.output(self.latch, True)
+            sleep(self.t)
+            GPIO.output(self.latch, False)
 
         def state(self, pin):
-                return self.pin[pin]
+            return self.pin[pin]
 
         def update(self):
-                        output = ''
-                        for ps in self.pin: #ps Pin State
-                                output = str(int(ps)) + output
-                        self.cmd(output)
-                        return True
+            output = ''
+            for ps in self.pin:  # ps Pin State
+                output = str(int(ps)) + output
+            self.cmd(output)
+            return True
 
-        def output(self, *states):
-                if type(states[0]) is not list:
-                     nope = ([[stetes[0], states[1]]])
-                for out in states:
-                     if out[0] >= self.count*8:
-                         return False #pin out of range #todo state is not 0 or 1
-                     self.pin[out[0]] = out[1]
-                self.update()
-                return True
+        def output(self, *args):
+            for out in args:
+                if out[0] >= self.count*8:
+                    # todo state is not 0 or 1
+                    return False  # pin out of range
+                self.pin[out[0]] = out[1]
+            self.update()
+            return True
+
 
 class A4988:
     _direction = 1
@@ -75,13 +77,13 @@ class A4988:
         self.ms = ms
         mode = {1: '000', 2: '100', 4: '010', 8: '110', 16: '111'}
         print(mode[ms])
-        print ('ms1 '+ str(mode[ms][0]))
-        print ('ms2 '+ str(mode[ms][1]))
-        print ('ms3 '+ str(mode[ms][2]))
+        print('ms1 ' + str(mode[ms][0]))
+        print('ms2 ' + str(mode[ms][1]))
+        print('ms3 ' + str(mode[ms][2]))
 
         GPIO.setup(self.directionPin, GPIO.OUT)
         GPIO.setup(self.stepPin, GPIO.OUT)
-#        sr.output(1, 1)
+        # sr.output(1, 1)
         # GPIO.setup(self.enablePin, GPIO.OUT)
         # GPIO.setup(self.resetPin, GPIO.OUT)
         # GPIO.setup(self.sleepPin, GPIO.OUT)
@@ -107,7 +109,8 @@ class A4988:
     @direction.setter
     def direction(self, value):
         self._direction = value
-        if self.revdir: value = not value
+        if self.revdir:
+            value = not value
         GPIO.output(self.directionPin, value)
 
 
@@ -208,7 +211,8 @@ class Plotter:
     def goto(self, x, y, speed):
         if not self.calibrated:
             raise NotCalibratedError()
-        #here will be some lines of code
+        # there will be some lines of code
+
     def calibrate(self, x, y):
         self.length = ctl((int(x), int(y)), self.m1, self.m2)
         self.calibrated = True
