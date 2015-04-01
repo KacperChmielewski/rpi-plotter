@@ -14,50 +14,51 @@ class BadCommandError(Exception):
 
 
 class ShiftRegister:
-        def __init__(self, data, clock, latch, count=1):
-            self.data = data
-            self.clock = clock
-            self.latch = latch
-            self.count = count
-            self.t = 0
-            GPIO.setup(data, GPIO.OUT)
-            GPIO.setup(clock, GPIO.OUT)
-            GPIO.setup(latch, GPIO.OUT)
-            GPIO.output(latch, False)
-            GPIO.output(clock, False)
-            self.pin = list(range(count*8))
-            for p in self.pin:
-                    self.pin[p] = False
+    t = 0
 
-        def cmd(self, cmd):
-            for state in str(cmd):
-                GPIO.output(self.data, int(state))
-                GPIO.output(self.clock, True)
-                sleep(self.t)
-                GPIO.output(self.clock, False)
-                sleep(self.t)
-            GPIO.output(self.latch, True)
+    def __init__(self, data, clock, latch, count=1):
+        self.data = data
+        self.clock = clock
+        self.latch = latch
+        self.count = count
+        GPIO.setup(data, GPIO.OUT)
+        GPIO.setup(clock, GPIO.OUT)
+        GPIO.setup(latch, GPIO.OUT)
+        GPIO.output(latch, False)
+        GPIO.output(clock, False)
+        self.pin = list(range(count*8))
+        for p in self.pin:
+            self.pin[p] = False
+
+    def cmd(self, cmd):
+        for state in str(cmd):
+            GPIO.output(self.data, int(state))
+            GPIO.output(self.clock, True)
             sleep(self.t)
-            GPIO.output(self.latch, False)
+            GPIO.output(self.clock, False)
+            sleep(self.t)
+        GPIO.output(self.latch, True)
+        sleep(self.t)
+        GPIO.output(self.latch, False)
 
-        def state(self, pin):
-            return self.pin[pin]
+    def state(self, pin):
+        return self.pin[pin]
 
-        def update(self):
-            output = ''
-            for ps in self.pin:  # ps Pin State
-                output = str(int(ps)) + output
-            self.cmd(output)
-            return True
+    def update(self):
+        output = ''
+        for ps in self.pin:  # ps Pin State
+            output = str(int(ps)) + output
+        self.cmd(output)
+        return True
 
-        def output(self, *args):
-            for out in args:
-                if out[0] >= self.count*8:
-                    # todo state is not 0 or 1
-                    return False  # pin out of range
-                self.pin[out[0]] = out[1]
-            self.update()
-            return True
+    def output(self, *args):
+        for out in args:  # WTF is this? Give the example of this, I don't undrstnd
+            if out[0] >= self.count*8:
+                # todo state is not 0 or 1
+                return False  # pin out of range
+            self.pin[out[0]] = out[1]
+        self.update()
+        return True
 
 
 class A4988:
@@ -211,7 +212,7 @@ class Plotter:
     def goto(self, x, y, speed):
         if not self.calibrated:
             raise NotCalibratedError()
-        # there will be some lines of code
+        raise NotImplementedError()
 
     def calibrate(self, x, y):
         self.length = ctl((int(x), int(y)), self.m1, self.m2)
