@@ -1,0 +1,8 @@
+def siema(*nope):
+	if type(nope) is tuple: print 'lista'
+	else: print 'nielusta'
+        print type(nope)
+	return nope
+
+
+print siema([4, 7], [1, 1])
