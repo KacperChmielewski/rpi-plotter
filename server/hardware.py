@@ -71,10 +71,26 @@ class ShiftRegister:
         return True
 
 
+class ATX:
+    def __init__(self, highCurrent, load, sr):
+        self.highCurrent = highCurrent
+        self.load = load
+        self.sr = sr
+        sr.output([highCurrent, 0], [load, 0])
+
+    def power(self, status):
+        self.sr.output(highCurrent, status)
+        return True    
+
+    def load(self, status):
+        self.sr.output(load, status)
+        return True    
+
+
 class A4988:
     _direction = 1
 
-    def __init__(self, directionpin, steppin, sleeppin, resetpin, ms3pin, ms2pin, ms1pin, enablepin, revdir=False, ms=16, spr=200, sr=self.sr):
+    def __init__(self, directionpin, steppin, sleeppin, resetpin, ms3pin, ms2pin, ms1pin, enablepin, sr, revdir=False, ms=16, spr=200):
         self.directionPin = directionpin
         self.stepPin = steppin
         self.sleepPin = sleeppin
@@ -86,24 +102,21 @@ class A4988:
         self.revdir = revdir
         self.ms = ms
         self.spr = spr
-
+        self.sr = sr
+        
+        # disable A4988 before setup
+        self.sr.output([enablepin, 1], [resetpin, 0], [sleeppin, 0])
+        
+        # setting up MS
         mode = {1: '000', 2: '100', 4: '010', 8: '110', 16: '111'}
-        print(mode[ms])
-        print('ms1 ' + str(mode[ms][0]))
-        print('ms2 ' + str(mode[ms][1]))
-        print('ms3 ' + str(mode[ms][2]))
-
+        self.sr.output([ms1pin, mode[ms][0]], [ms2pin, mode[ms][1]], [ms3pin, mode[ms][2]])
+        
+        # setting up GPIO outputs for direction and step 
         GPIO.setup(self.directionPin, GPIO.OUT)
         GPIO.setup(self.stepPin, GPIO.OUT)
-        sr.output(1, 1)
-        # GPIO.setup(self.enablePin, GPIO.OUT)
-        # GPIO.setup(self.resetPin, GPIO.OUT)
-        # GPIO.setup(self.sleepPin, GPIO.OUT)
 
     def power(self, status):
-        # GPIO.output(self.enablePin, not status)
-        # GPIO.output(self.resetPin, not status)
-        # GPIO.output(self.sleepPin, status)
+        self.sr.output([self.enablepin, not status], [self.resetpin, status], [self.sleeppin, status])
         return True
 
     def move(self, steps, speed):  # speed - revolution per second
@@ -160,15 +173,23 @@ class Plotter:
         print("Initializing shift register")
         self.sr = ShiftRegister(15, 11, 13, 2)
 
+        print("Initializing ATX power supply")
+        self.power = ATX(7, 15)
+
+
         print("Initializing left engine...")
-        self.left_engine = A4988(26, 24, 14, 13, 12, 11, 10, 9, True)
-        self.left_engine.power(True)
+        self.left_engine = A4988(26, 24, 14, 13, 12, 11, 10, 9, self.sr, True)
         print("Initializing right engine...")
-        self.right_engine = A4988(18, 16, 6, 5, 4, 3, 2, 1)
-        self.right_engine.power(True)
+        self.right_engine = A4988(18, 16, 6, 5, 4, 3, 2, 1, self.sr)
 
         print("Initializing separator...")
         self.separator = Servo(23)
+        
+        print("Turning power and motors on...")
+        self.power.power(True)
+        self.power.load(True)
+        self.left_engine.power(True)
+        self.right_engine.power(True)
 
     def move_vertical(self, steps, speed):
         if sign(steps) == 1:
