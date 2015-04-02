@@ -80,8 +80,10 @@ class ATX:
 
     def power(self, status):
         self.sr.output(self.highCurrent, status)
-        return True    
-
+        return True
+    def loadR(self, status):
+        self.sr.output(self.load, status)
+        return True
 
 
 class A4988:
@@ -184,7 +186,7 @@ class Plotter:
         
         print("Turning power and motors on...")
         self.power.power(True)
-        #self.power.load(True)
+        self.power.loadR(True)
         self.left_engine.power(True)
         self.right_engine.power(True)
 
@@ -223,26 +225,29 @@ class Plotter:
             self.right_engine.move(gright, float(speed))
         else:
             rel = abs(float(gleft)/gright)
-            # print(rel)
             done = 0
             ldir = sign(gleft)  # Left Direction
             rdir = sign(gright)  # Right Direction
-            print(ldir)
-            print(rdir)
+            if ldir == -1: ldir = 0
+            if rdir == -1: rdir = 0
+            self.left_engine.direction = ldir
+            self.right_engine.direction = rdir
             for i in range(1, abs(gright)+1):
-                # print('R')
-                self.right_engine.move(rdir, float(speed))
+                self.right_engine.move(1, float(speed))
                 htbd = int(i*rel)  # steps which Has To Be Done
                 td = htbd - done  # steps To Do
-                # print('L ' + str(td))
-                self.left_engine.move(ldir*td, float(speed))
+                self.left_engine.move(td, float(speed))
                 done = htbd
 
     def goto(self, x, y, speed):
         if not self.calibrated:
             raise NotCalibratedError()
-        raise NotImplementedError()
-
+        else:
+            destination = ctl([int(x), int(y)], self.m1, self.m2)
+            #print(destination)
+            change = [int(destination[0] - self.length[0]), int(destination[1] - self.length[1])]
+            #print(change)
+            self.move_both(change[0], change[1], speed)
     def calibrate(self, x, y):
         self.length = ctl((int(x), int(y)), self.m1, self.m2)
         self.calibrated = True
@@ -286,12 +291,15 @@ class Plotter:
                 self.goto(part[1], part[2], part[3])
             else:
                 raise NotCalibratedError()
+        elif part[0] == 'l':
+            print(self.length)
+            
         elif part[0] == 'E':
             #GASIMY
             self.left_engine.power(False)
             self.right_engine.power(False)
             self.power.power(False)
-            #self.power.load(False)
+            self.power.loadR(False)
             exit()
         else:
             raise BadCommandError()
