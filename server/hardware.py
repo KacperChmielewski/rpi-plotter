@@ -46,7 +46,7 @@ class ShiftRegister:
 
     def update(self):
         output = ''
-        for ps in self.pin:  # ps Pin State
+        for ps in self.pin:  # ps pin State
             output = str(int(ps)) + output
         self.cmd(output)
         return True
@@ -62,7 +62,7 @@ class ShiftRegister:
     
     def output(self, *states):
         if type(states[0]) is not list:
-            nope = ([[stetes[0], states[1]]])
+            states = ([[states[0], states[1]]])
         for out in states:
             if out[0] >= self.count*8:
                return False #pin out of range #todo state is not 0 or 1
@@ -79,26 +79,23 @@ class ATX:
         sr.output([highCurrent, 0], [load, 0])
 
     def power(self, status):
-        self.sr.output(highCurrent, status)
+        self.sr.output(self.highCurrent, status)
         return True    
 
-    def load(self, status):
-        self.sr.output(load, status)
-        return True    
 
 
 class A4988:
     _direction = 1
 
     def __init__(self, directionpin, steppin, sleeppin, resetpin, ms3pin, ms2pin, ms1pin, enablepin, sr, revdir=False, ms=16, spr=200):
-        self.directionPin = directionpin
-        self.stepPin = steppin
-        self.sleepPin = sleeppin
-        self.resetPin = resetpin
+        self.directionpin = directionpin
+        self.steppin = steppin
+        self.sleeppin = sleeppin
+        self.resetpin = resetpin
         self.ms3pin = ms3pin
         self.ms2pin = ms2pin
         self.ms1pin = ms1pin
-        self.enablePin = enablepin
+        self.enablepin = enablepin
         self.revdir = revdir
         self.ms = ms
         self.spr = spr
@@ -112,8 +109,8 @@ class A4988:
         self.sr.output([ms1pin, mode[ms][0]], [ms2pin, mode[ms][1]], [ms3pin, mode[ms][2]])
         
         # setting up GPIO outputs for direction and step 
-        GPIO.setup(self.directionPin, GPIO.OUT)
-        GPIO.setup(self.stepPin, GPIO.OUT)
+        GPIO.setup(self.directionpin, GPIO.OUT)
+        GPIO.setup(self.steppin, GPIO.OUT)
 
     def power(self, status):
         self.sr.output([self.enablepin, not status], [self.resetpin, status], [self.sleeppin, status])
@@ -122,9 +119,9 @@ class A4988:
     def move(self, steps, speed):  # speed - revolution per second
         t = 1.0/(self.spr*self.ms*speed)/2
         for i in range(abs(steps)):
-            GPIO.output(self.stepPin, True)
+            GPIO.output(self.steppin, True)
             sleep(t)
-            GPIO.output(self.stepPin, False)
+            GPIO.output(self.steppin, False)
             sleep(t)
             
     @property
@@ -136,7 +133,7 @@ class A4988:
         self._direction = value
         if self.revdir:
             value = not value
-        GPIO.output(self.directionPin, value)
+        GPIO.output(self.directionpin, value)
 
 
 class Servo:
@@ -174,7 +171,7 @@ class Plotter:
         self.sr = ShiftRegister(15, 11, 13, 2)
 
         print("Initializing ATX power supply")
-        self.power = ATX(7, 15)
+        self.power = ATX(7, 15, self.sr)
 
 
         print("Initializing left engine...")
@@ -187,7 +184,7 @@ class Plotter:
         
         print("Turning power and motors on...")
         self.power.power(True)
-        self.power.load(True)
+        #self.power.load(True)
         self.left_engine.power(True)
         self.right_engine.power(True)
 
@@ -289,6 +286,13 @@ class Plotter:
                 self.goto(part[1], part[2], part[3])
             else:
                 raise NotCalibratedError()
+        elif part[0] == 'E':
+            #GASIMY
+            self.left_engine.power(False)
+            self.right_engine.power(False)
+            self.power.power(False)
+            #self.power.load(False)
+            exit()
         else:
             raise BadCommandError()
         return ""
