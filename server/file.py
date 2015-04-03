@@ -16,7 +16,6 @@ class CommandFileParser:
         f.close()
         counter = 1
         for cmd in cmds:
-            sleep(1)
             print(cmd)
             try:
                 msg = self.plotter.exec(cmd)

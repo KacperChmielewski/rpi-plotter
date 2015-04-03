@@ -166,7 +166,7 @@ class Servo:
 
 
 class Plotter:
-    m1, m2 = [0, 0], [76846, 0]
+    m1, m2 = [0, 0], [52861, 1337]
     spr = 200  # steps per revolution in full step mode
     ms = 16    # (1, 2, 4, 8, 16)
     global length
@@ -292,7 +292,7 @@ class Plotter:
             return length
         elif part[0] == 'COR':
             if self.calibrated:
-                return ltc(len, self.m1, self.m2)
+                return ltc(length, self.m1, self.m2)
             else:
                 raise NotCalibratedError()
         elif part[0] == 'LEN':
