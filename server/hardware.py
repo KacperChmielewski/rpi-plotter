@@ -88,8 +88,7 @@ class ATX:
 
 class A4988:
     _direction = 1
-
-    def __init__(self, directionpin, steppin, sleeppin, resetpin, ms3pin, ms2pin, ms1pin, enablepin, sr, revdir=False, ms=16, spr=200):
+    def __init__(self, directionpin, steppin, sleeppin, resetpin, ms3pin, ms2pin, ms1pin, enablepin, sr, revdir=False, ms=16, spr=200, **kwargs):
         self.directionpin = directionpin
         self.steppin = steppin
         self.sleeppin = sleeppin
@@ -102,6 +101,7 @@ class A4988:
         self.ms = ms
         self.spr = spr
         self.sr = sr
+        self.side = kwargs['side']
         
         # disable A4988 before setup
         self.sr.output([enablepin, 1], [resetpin, 0], [sleeppin, 0])
@@ -116,10 +116,18 @@ class A4988:
 
     def power(self, status):
         self.sr.output([self.enablepin, not status], [self.resetpin, status], [self.sleeppin, status])
+        sleep(0.01)
         return True
 
     def move(self, steps, speed):  # speed - revolution per second
+        # interval
         t = 1.0/(self.spr*self.ms*speed)/2
+        
+        # length update
+        steps = abs(steps)
+        if self._direction == 0: steps = steps * -1
+        length[self.side]+= steps
+        
         for i in range(abs(steps)):
             GPIO.output(self.steppin, True)
             sleep(t)
@@ -162,7 +170,8 @@ class Plotter:
     m1, m2 = [0, 0], [76846, 0]
     spr = 200  # steps per revolution in full step mode
     ms = 16    # (1, 2, 4, 8, 16)
-    length = (0, 0)
+    global length
+    length = [0, 0]
     calibrated = False
     right_engine, left_engine = None, None
 
@@ -177,9 +186,9 @@ class Plotter:
 
 
         print("Initializing left engine...")
-        self.left_engine = A4988(26, 24, 14, 13, 12, 11, 10, 9, self.sr, True)
+        self.left_engine = A4988(26, 24, 14, 13, 12, 11, 10, 9, self.sr, True, side=0)
         print("Initializing right engine...")
-        self.right_engine = A4988(18, 16, 6, 5, 4, 3, 2, 1, self.sr)
+        self.right_engine = A4988(18, 16, 6, 5, 4, 3, 2, 1, self.sr, side=1)
 
         print("Initializing separator...")
         self.separator = Servo(23)
@@ -292,7 +301,7 @@ class Plotter:
             else:
                 raise NotCalibratedError()
         elif part[0] == 'l':
-            print(self.length)
+            print(length)
             
         elif part[0] == 'E':
             #GASIMY
