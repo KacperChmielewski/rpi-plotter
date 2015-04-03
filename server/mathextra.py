@@ -18,7 +18,7 @@ def ctl(c, m1p, m2p):
     """Converts coordinates to length"""
     m1 = math.sqrt((c[0] - m1p[0]) ** 2 + (c[1] - m1p[1]) ** 2)
     m2 = math.sqrt((m2p[0] - c[0]) ** 2 + (c[1] - m2p[1]) ** 2)
-    return m1, m2
+    return [m1, m2]
 
 
 def ltc(l, m1p, m2p):
@@ -34,7 +34,7 @@ def ltc(l, m1p, m2p):
     rgamma = gamma*math.pi/180
     pa = math.cos(rgamma)*l[0]
     pb = math.sqrt(l[0]**2 - pa**2)
-    return round(pb+m1p[0], nround), round(pa+m1p[1], nround)
+    return [round(pb+m1p[0], nround), round(pa+m1p[1], nround)]
 
 
 class Point:

@@ -102,7 +102,6 @@ class A4988:
         self.spr = spr
         self.sr = sr
         self.side = kwargs['side']
-        
         # disable A4988 before setup
         self.sr.output([enablepin, 1], [resetpin, 0], [sleeppin, 0])
         
@@ -254,11 +253,14 @@ class Plotter:
         else:
             destination = ctl([int(x), int(y)], self.m1, self.m2)
             #print(destination)
-            change = [int(destination[0] - self.length[0]), int(destination[1] - self.length[1])]
+            change = [int(destination[0] - length[0]), int(destination[1] - length[1])]
             #print(change)
+            print(change)
             self.move_both(change[0], change[1], speed)
     def calibrate(self, x, y):
-        self.length = ctl((int(x), int(y)), self.m1, self.m2)
+        global length
+        length = ctl((int(x), int(y)), self.m1, self.m2)
+        length = [int(length[0]), int(length[1])] 
         self.calibrated = True
 
     def exec(self, command):
@@ -287,14 +289,14 @@ class Plotter:
             self.move_both(int(part[1]), int(part[2]), float(part[3]))
         elif part[0] == 'C':
             self.calibrate(int(part[1]), int(part[2]))
-            return self.length
+            return length
         elif part[0] == 'COR':
             if self.calibrated:
                 return ltc(len, self.m1, self.m2)
             else:
                 raise NotCalibratedError()
         elif part[0] == 'LEN':
-            return self.length
+            return length
         elif part[0] == 'GOTO':  # Actually move to spec. position
             if self.calibrated:
                 self.goto(part[1], part[2], part[3])
