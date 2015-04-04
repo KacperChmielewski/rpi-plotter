@@ -1,5 +1,4 @@
 from hardware import Plotter, BadCommandError, NotCalibratedError
-from time import sleep
 
 
 class CommandFileParser:

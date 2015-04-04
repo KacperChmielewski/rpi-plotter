@@ -4,9 +4,9 @@ def circle(x0, y0, radius):
     ddf_y = -2 * radius
     x = 0
     y = radius
-    out=range(8)
+    out = []
     for i in range(8):
-        out[i] = []
+        out.append([])
     while x < y:
         if f >= 0: 
             y -= 1
@@ -33,10 +33,11 @@ def circle(x0, y0, radius):
     
     for div in out:
         for part in div:
-            com = 'GOTO '+str(part[0]) + ' ' + str(part[1]) +' 1\n'
+            com = 'GOTO {} {} 1\n'.format(str(part[0]), str(part[1]))
             output.write(com)
 
     output.close()
-   
-circle(x0=37500, y0=37500, radius=2500)
 
+if __name__ == '__main__':
+    print("executing circle(x0=37500, y0=37500, radius=2500), output=circle.plo")
+    circle(x0=37500, y0=37500, radius=2500)

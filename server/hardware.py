@@ -2,6 +2,8 @@ from mathextra import *
 import RPi.GPIO as GPIO
 from time import sleep
 
+length = [0, 0]
+
 
 class NotCalibratedError(Exception):
     def __str__(self):
@@ -50,45 +52,40 @@ class ShiftRegister:
             output = str(int(ps)) + output
         self.cmd(output)
         return True
-
-    def output(self, *args):
-        for out in args:  # WTF is this? Give the example of this, I don't undrstnd
-            if out[0] >= self.count*8:
-                # todo state is not 0 or 1
-                return False  # pin out of range
-            self.pin[out[0]] = out[1]
-        self.update()
-        return True
     
     def output(self, *states):
         if type(states[0]) is not list:
             states = ([[states[0], states[1]]])
         for out in states:
             if out[0] >= self.count*8:
-               return False #pin out of range #todo state is not 0 or 1
+                # TODO: state is not 0 or 1
+                return False  # pin out of range
             self.pin[out[0]] = out[1]
         self.update()
         return True
 
 
 class ATX:
-    def __init__(self, highCurrent, load, sr):
-        self.highCurrent = highCurrent
+    def __init__(self, highcurrent, load, sr):
+        self.highcurrent = highcurrent
         self.load = load
         self.sr = sr
-        sr.output([highCurrent, 0], [load, 0])
+        sr.output([highcurrent, 0], [load, 0])
 
     def power(self, status):
-        self.sr.output(self.highCurrent, status)
+        self.sr.output(self.highcurrent, status)
         return True
-    def loadR(self, status):
+
+    def loadr(self, status):
         self.sr.output(self.load, status)
         return True
 
 
 class A4988:
     _direction = 1
-    def __init__(self, directionpin, steppin, sleeppin, resetpin, ms3pin, ms2pin, ms1pin, enablepin, sr, revdir=False, ms=16, spr=200, **kwargs):
+
+    def __init__(self, directionpin, steppin, sleeppin, resetpin, ms3pin, ms2pin, ms1pin, enablepin, sr,
+                 ms=16, spr=200, **kwargs):
         self.directionpin = directionpin
         self.steppin = steppin
         self.sleeppin = sleeppin
@@ -97,11 +94,11 @@ class A4988:
         self.ms2pin = ms2pin
         self.ms1pin = ms1pin
         self.enablepin = enablepin
-        self.revdir = revdir
         self.ms = ms
         self.spr = spr
         self.sr = sr
-        self.side = kwargs['side']
+        self.revdir = kwargs.get('revdir', False)
+        self.side = kwargs.get('side', 0)
         # disable A4988 before setup
         self.sr.output([enablepin, 1], [resetpin, 0], [sleeppin, 0])
         
@@ -124,8 +121,9 @@ class A4988:
         
         # length update
         steps = abs(steps)
-        if self._direction == 0: steps = steps * -1
-        length[self.side]+= steps
+        if self._direction == 0:
+            steps *= -1
+        length[self.side] += steps
         
         for i in range(abs(steps)):
             GPIO.output(self.steppin, True)
@@ -158,10 +156,10 @@ class Servo:
 
     def set(self, status):
         if status:
-            length = self.on
+            extend = self.on
         else:
-            length = self.off
-        self.pwm.start(length)
+            extend = self.off
+        self.pwm.start(extend)
         sleep(0.5)
 
 
@@ -170,7 +168,6 @@ class Plotter:
     spr = 200  # steps per revolution in full step mode
     ms = 16    # (1, 2, 4, 8, 16)
     global length
-    length = [0, 0]
     calibrated = False
     right_engine, left_engine = None, None
 
@@ -183,9 +180,8 @@ class Plotter:
         print("Initializing ATX power supply")
         self.power = ATX(7, 15, self.sr)
 
-
         print("Initializing left engine...")
-        self.left_engine = A4988(26, 24, 14, 13, 12, 11, 10, 9, self.sr, True, side=0)
+        self.left_engine = A4988(26, 24, 14, 13, 12, 11, 10, 9, self.sr, side=0, revdir=True)
         print("Initializing right engine...")
         self.right_engine = A4988(18, 16, 6, 5, 4, 3, 2, 1, self.sr, side=1)
 
@@ -194,7 +190,7 @@ class Plotter:
         
         print("Turning power and motors on...")
         self.power.power(True)
-        self.power.loadR(True)
+        self.power.loadr(True)
         self.left_engine.power(True)
         self.right_engine.power(True)
 
@@ -236,8 +232,10 @@ class Plotter:
             done = 0
             ldir = sign(gleft)  # Left Direction
             rdir = sign(gright)  # Right Direction
-            if ldir == -1: ldir = 0
-            if rdir == -1: rdir = 0
+            if ldir == -1:
+                ldir = 0
+            if rdir == -1:
+                rdir = 0
             self.left_engine.direction = ldir
             self.right_engine.direction = rdir
             for i in range(1, abs(gright)+1):
@@ -252,11 +250,12 @@ class Plotter:
             raise NotCalibratedError()
         else:
             destination = ctl([int(x), int(y)], self.m1, self.m2)
-            #print(destination)
+            # print(destination)
             change = [int(destination[0] - length[0]), int(destination[1] - length[1])]
-            #print(change)
+            # print(change)
             print(change)
             self.move_both(change[0], change[1], speed)
+
     def calibrate(self, x, y):
         global length
         length = ctl((int(x), int(y)), self.m1, self.m2)
@@ -306,12 +305,12 @@ class Plotter:
             print(length)
             
         elif part[0] == 'E':
-            #GASIMY
+            # GASIMY
             self.left_engine.power(False)
             self.right_engine.power(False)
             self.power.power(False)
-            self.power.loadR(False)
-            exit()
+            self.power.loadr(False)
+            # exit() -- LISTENER CONFLICT
         else:
             raise BadCommandError()
         return ""

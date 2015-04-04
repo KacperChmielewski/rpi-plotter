@@ -14,10 +14,10 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
         try:
             print("{}:{} connected!".format(self.client_address[0], self.client_address[1]))
             while True:
-                self.data = self.request.recv(1024)
-                if not self.data:
+                data = self.request.recv(1024)
+                if not data:
                     break
-                m = str(self.data, 'ascii')
+                m = str(data, 'ascii')
                 print("{} wrote: {}".format(self.client_address[0], m))
                 queue.put((m, self.request))
 
@@ -35,6 +35,7 @@ def serve():
     print("Listening on {}:{}".format(host, str(port)))
     print("Ctrl-C - quit")
     server.serve_forever()
+
 
 def signal_handler(signal, frame):
     print('\nCtrl-C pressed, quitting...!')
