@@ -28,9 +28,7 @@ class ShiftRegister:
         GPIO.setup(latch, GPIO.OUT)
         GPIO.output(latch, False)
         GPIO.output(clock, False)
-        self.pin = list(range(count*8))
-        for p in self.pin:
-            self.pin[p] = False
+        self.pin = [False] * (count*8)
 
     def cmd(self, cmd):
         for state in str(cmd):
