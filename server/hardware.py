@@ -167,7 +167,6 @@ class Plotter:
     m1, m2 = [0, 0], [52861, 1337]
     spr = 200  # steps per revolution in full step mode
     ms = 16    # (1, 2, 4, 8, 16)
-    global length
     calibrated = False
     right_engine, left_engine = None, None
 
