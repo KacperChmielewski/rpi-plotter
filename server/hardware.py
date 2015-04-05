@@ -158,24 +158,30 @@ class A4988:
 
 
 class Servo:
-    def __init__(self, pin, on=11, off=5):
+    def __init__(self, pin, on=6.3, off=2.5):
         self.pin = pin
         GPIO.setup(pin, GPIO.OUT)
 
-        self.pwm = GPIO.PWM(pin, 100)
+        self.pwm = GPIO.PWM(pin, 50)
         self.on = on
         self.off = off
+        self.pwmfactor = (on-off)/100
         self.pwm.start(off)
+        self.state = 0
         self.set(1)
 
     def set(self, status):
+        if self.state == status:
+            return True
         if status:
-            extend = self.on
+            for i in range(100):
+                self.pwm.start(i*self.pwmfactor+self.off)
+                sleep(0.01)
         else:
-            extend = self.off
-        self.pwm.start(extend)
-        sleep(0.5)
-
+            for i in range(100):
+                self.pwm.start(i*self.pwmfactor*-1+self.on)
+                sleep(0.01)
+        self.state = status
 
 class Plotter:
     m1, m2 = [0, 0], [52861, 1337]
@@ -310,7 +316,7 @@ class Plotter:
         sleep(int(ms))
 
     def setseparator(self, state):
-        self.separator.set(bool(state))
+        self.separator.set(int(state))
 
     def calibrate(self, x, y):
         global length
