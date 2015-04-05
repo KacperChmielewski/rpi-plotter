@@ -303,10 +303,10 @@ class Plotter:
         if not self.calibrated:
             raise NotCalibratedError()
         else:
-            destination = ctl((int(x), int(y)), self.m1, self.m2)
+            destination = ctl([int(x), int(y)], self.m1, self.m2)
             if self.getdebug():
                 print("Destination: " + destination)
-            change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
+            change = [int(destination[0] - length[0]), int(destination[1] - length[1])]
             if self.getdebug():
                 print("Change: " + str(change))
             self.moveboth(change[0], change[1], speed)
