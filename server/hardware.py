@@ -305,7 +305,7 @@ class Plotter:
         else:
             destination = ctl([int(x), int(y)], self.m1, self.m2)
             if self.getdebug():
-                print("Destination: " + destination)
+                print("Destination: " + str(destination))
             change = [int(destination[0] - length[0]), int(destination[1] - length[1])]
             if self.getdebug():
                 print("Change: " + str(change))
