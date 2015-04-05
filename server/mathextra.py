@@ -24,17 +24,17 @@ def ctl(c, m1p, m2p):
 def ltc(l, m1p, m2p):
     """Converts length to coordinates"""
     nround = 99
-    c = math.sqrt((m1p[0] - m2p[0])**2 + (m1p[1] - m2p[1])**2)
+    c = math.sqrt((m1p[0] - m2p[0]) ** 2 + (m1p[1] - m2p[1]) ** 2)
     alfa = afb(l[1], c, l[0])
     beta = afb(math.fabs(m2p[1] - m1p[1]), c, math.fabs(m2p[0] - m1p[0]))
     if m1p[1] <= m2p[1]:
-        gamma = 90-alfa-beta
+        gamma = 90 - alfa - beta
     else:
-        gamma = 90-alfa+beta
-    rgamma = gamma*math.pi/180
-    pa = math.cos(rgamma)*l[0]
-    pb = math.sqrt(l[0]**2 - pa**2)
-    return [round(pb+m1p[0], nround), round(pa+m1p[1], nround)]
+        gamma = 90 - alfa + beta
+    rgamma = gamma * math.pi / 180
+    pa = math.cos(rgamma) * l[0]
+    pb = math.sqrt(l[0] ** 2 - pa ** 2)
+    return [round(pb + m1p[0], nround), round(pa + m1p[1], nround)]
 
 
 class Point:

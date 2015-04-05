@@ -1,18 +1,29 @@
 from mathextra import *
-import RPi.GPIO as GPIO
 from time import sleep
+
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    import fakeGPIO as GPIO
 
 length = [0, 0]
 
 
-class NotCalibratedError(Exception):
-    def __str__(self):
-        return "Plotter is not calibrated!"
+class CommandError(Exception):
+    def __init__(self, msg):
+        Exception.__init__(self)
+        self.msg = str(msg)
+
+    def __str__(self, capital=True):
+        if capital:
+            return self.msg[0].upper() + self.msg[1:]
+        else:
+            return self.msg[0].lower() + self.msg[1:]
 
 
-class BadCommandError(Exception):
-    def __str__(self):
-        return "Bad command!"
+class NotCalibratedError(CommandError):
+    def __init__(self):
+        CommandError.__init__(self, "Plotter is not calibrated!")
 
 
 class ShiftRegister:
@@ -28,7 +39,7 @@ class ShiftRegister:
         GPIO.setup(latch, GPIO.OUT)
         GPIO.output(latch, False)
         GPIO.output(clock, False)
-        self.pin = [False] * (count*8)
+        self.pin = [False] * (count * 8)
 
     def cmd(self, cmd):
         for state in str(cmd):
@@ -50,12 +61,12 @@ class ShiftRegister:
             output = str(int(ps)) + output
         self.cmd(output)
         return True
-    
+
     def output(self, *states):
         if type(states[0]) is not list:
             states = ([[states[0], states[1]]])
         for out in states:
-            if out[0] >= self.count*8:
+            if out[0] >= self.count * 8:
                 # TODO: state is not 0 or 1
                 return False  # pin out of range
             self.pin[out[0]] = out[1]
@@ -99,11 +110,11 @@ class A4988:
         self.side = kwargs.get('side', 0)
         # disable A4988 before setup
         self.sr.output([enablepin, 1], [resetpin, 0], [sleeppin, 0])
-        
+
         # setting up MS
         mode = {1: '000', 2: '100', 4: '010', 8: '110', 16: '111'}
         self.sr.output([ms1pin, mode[ms][0]], [ms2pin, mode[ms][1]], [ms3pin, mode[ms][2]])
-        
+
         # setting up GPIO outputs for direction and step 
         GPIO.setup(self.directionpin, GPIO.OUT)
         GPIO.setup(self.steppin, GPIO.OUT)
@@ -113,22 +124,27 @@ class A4988:
         sleep(0.01)
         return True
 
-    def move(self, steps, speed):  # speed - revolution per second
+    def move(self, steps, speed):  # speed - revolutions per second
+        if speed < 0:
+            raise CommandError("'speed' cannot be negative")
+        elif speed == 0:
+            raise CommandError("'speed' cannot be zero (moving without speed?)")
+
         # interval
-        t = 1.0/(self.spr*self.ms*speed)/2
-        
+        t = 1.0 / (self.spr * self.ms * speed) / 2
+
         # length update
         steps = abs(steps)
         if self._direction == 0:
             steps *= -1
         length[self.side] += steps
-        
+
         for i in range(abs(steps)):
             GPIO.output(self.steppin, True)
             sleep(t)
             GPIO.output(self.steppin, False)
             sleep(t)
-            
+
     @property
     def direction(self):
         return self._direction
@@ -164,9 +180,10 @@ class Servo:
 class Plotter:
     m1, m2 = [0, 0], [52861, 1337]
     spr = 200  # steps per revolution in full step mode
-    ms = 16    # (1, 2, 4, 8, 16)
+    ms = 16  # (1, 2, 4, 8, 16)
     calibrated = False
     right_engine, left_engine = None, None
+    debug = False
 
     def __init__(self):
         GPIO.setmode(GPIO.BOARD)
@@ -177,21 +194,52 @@ class Plotter:
         print("Initializing ATX power supply")
         self.power = ATX(7, 15, self.sr)
 
-        print("Initializing left engine...")
+        print("Initializing left engine")
         self.left_engine = A4988(26, 24, 14, 13, 12, 11, 10, 9, self.sr, side=0, revdir=True)
-        print("Initializing right engine...")
+        print("Initializing right engine")
         self.right_engine = A4988(18, 16, 6, 5, 4, 3, 2, 1, self.sr, side=1)
 
-        print("Initializing separator...")
+        print("Initializing separator")
         self.separator = Servo(23)
-        
-        print("Turning power and motors on...")
+
+        print("Turning power and motors on")
         self.power.power(True)
         self.power.loadr(True)
         self.left_engine.power(True)
         self.right_engine.power(True)
+        self.commands = {
+            'L': self.moveleft,
+            'R': self.moveright,
+            'V': self.movevertical,
+            'H': self.movehorizontal,
+            'B': self.moveboth,
+            'GOTO': self.goto,
+            'P': self.pause,
+            'S': self.setseparator,
+            'C': self.calibrate,
+            'COR': self.getcoord,
+            'LEN': self.getlength,
+            'DEBUG': self.setdebug,  # only in terminal
+            # 'E': self.poweroff
+        }
 
-    def move_vertical(self, steps, speed):
+    @staticmethod
+    def move(motor, steps, speed):
+        steps = int(steps)
+        speed = float(speed)
+        if sign(steps) == 1:
+            motor.direction = 1
+        else:
+            motor.direction = 0
+        motor.move(steps, speed)
+
+    def moveleft(self, steps, speed):
+        self.move(self.left_engine, steps, speed)
+
+    def moveright(self, steps, speed):
+        self.move(self.right_engine, steps, speed)
+
+    def movevertical(self, steps, speed):
         if sign(steps) == 1:
             self.left_engine.direction = 1
             self.right_engine.direction = 1
@@ -204,7 +252,7 @@ class Plotter:
             self.left_engine.move(1, speed)
             self.right_engine.move(1, speed)
 
-    def move_horizontal(self, steps, speed):
+    def movehorizontal(self, steps, speed):
         if sign(steps) == 1:
             self.left_engine.direction = 1
             self.right_engine.direction = 0
@@ -217,7 +265,7 @@ class Plotter:
             self.left_engine.move(1, speed)
             self.right_engine.move(1, speed)
 
-    def move_both(self, left, right, speed):
+    def moveboth(self, left, right, speed):
         gleft = int(left)
         gright = int(right)
         if gleft == 0 or gright == 0:
@@ -225,19 +273,19 @@ class Plotter:
             self.left_engine.move(gleft, float(speed))
             self.right_engine.move(gright, float(speed))
         else:
-            rel = abs(float(gleft)/gright)
+            rel = abs(float(gleft) / gright)
             done = 0
             ldir = sign(gleft)  # Left Direction
             rdir = sign(gright)  # Right Direction
             if ldir == -1:
                 ldir = 0
+            self.left_engine.direction = ldir
             if rdir == -1:
                 rdir = 0
-            self.left_engine.direction = ldir
             self.right_engine.direction = rdir
-            for i in range(1, abs(gright)+1):
+            for i in range(1, abs(gright) + 1):
                 self.right_engine.move(1, float(speed))
-                htbd = int(i*rel)  # steps which Has To Be Done
+                htbd = int(i * rel)  # steps which Has To Be Done
                 td = htbd - done  # steps To Do
                 self.left_engine.move(td, float(speed))
                 done = htbd
@@ -246,68 +294,55 @@ class Plotter:
         if not self.calibrated:
             raise NotCalibratedError()
         else:
-            destination = ctl([int(x), int(y)], self.m1, self.m2)
-            # print(destination)
-            change = [int(destination[0] - length[0]), int(destination[1] - length[1])]
-            # print(change)
-            print(change)
-            self.move_both(change[0], change[1], speed)
+            destination = ctl((int(x), int(y)), self.m1, self.m2)
+            if self.debug:
+                print("Destination: " + destination)
+            change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
+            if self.debug:
+                print("Change: " + str(change))
+            self.moveboth(change[0], change[1], speed)
+
+    @staticmethod
+    def pause(ms):
+        sleep(int(ms))
+
+    def setseparator(self, state):
+        self.separator.set(bool(state))
 
     def calibrate(self, x, y):
         global length
         length = ctl((int(x), int(y)), self.m1, self.m2)
-        length = [int(length[0]), int(length[1])] 
+        length = [int(length[0]), int(length[1])]
         self.calibrated = True
 
-    def exec(self, command):
-        part = command.split(' ')
-        if part[0] == 'L' or part[0] == 'R':
-            if part[0] == 'L':
-                mot = self.left_engine
-            else:
-                mot = self.right_engine
-
-            if sign(int(part[1])) == 1:
-                mot.direction = 1
-            else:
-                mot.direction = 0
-
-            mot.move(int(part[1]), float(part[2]))
-        elif part[0] == 'V':
-            self.move_vertical(int(part[1]), float(part[2]))
-        elif part[0] == 'H':
-            self.move_horizontal(int(part[1]), float(part[2]))
-        elif part[0] == 'S':
-            self.separator.set(int(part[1]))
-        elif part[0] == 'P':
-            sleep(float(part[1]))
-        elif part[0] == 'B':
-            self.move_both(int(part[1]), int(part[2]), float(part[3]))
-        elif part[0] == 'C':
-            self.calibrate(int(part[1]), int(part[2]))
-            return length
-        elif part[0] == 'COR':
-            if self.calibrated:
-                return ltc(length, self.m1, self.m2)
-            else:
-                raise NotCalibratedError()
-        elif part[0] == 'LEN':
-            return length
-        elif part[0] == 'GOTO':  # Actually move to spec. position
-            if self.calibrated:
-                self.goto(part[1], part[2], part[3])
-            else:
-                raise NotCalibratedError()
-        elif part[0] == 'l':
-            print(length)
-            
-        elif part[0] == 'E':
-            # GASIMY
-            self.left_engine.power(False)
-            self.right_engine.power(False)
-            self.power.power(False)
-            self.power.loadr(False)
-            # exit() -- LISTENER CONFLICT
+    def getcoord(self):
+        if self.calibrated:
+            return ltc(length, self.m1, self.m2)
         else:
-            raise BadCommandError()
-        return ""
+            raise NotCalibratedError()
+
+    @staticmethod
+    def getlength():
+        return length
+
+    def setdebug(self, value):
+        self.debug = bool(value)
+
+    def execute(self, command):
+        cmdparts = command.upper().split(' ')
+        command = cmdparts[0].strip()
+        commandargs = cmdparts[1:]
+        action = self.commands.get(command)
+        if not action:
+            raise CommandError(command + " - bad command!")
+        else:
+            try:
+                return action(*commandargs)
+            except TypeError as ex:
+                ex_msg = str(ex)
+
+                if all(x in ex_msg for x in ['takes', 'positional argument', 'given']):  # too many argument(s)
+                    raise CommandError("Too many arguments!")
+                elif all(x in ex_msg for x in ['missing', 'required positional argument']):  # missing argument(s)
+                    missing = ex_msg.rsplit(':', 1)[1].strip()
+                    raise CommandError("Missing arguments: " + missing)

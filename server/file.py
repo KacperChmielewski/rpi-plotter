@@ -1,4 +1,5 @@
-from hardware import Plotter, BadCommandError, NotCalibratedError
+from hardware import Plotter, CommandError
+import sys
 
 
 class CommandFileParser:
@@ -17,16 +18,14 @@ class CommandFileParser:
         for cmd in cmds:
             print(cmd)
             try:
-                msg = self.plotter.exec(cmd)
+                msg = self.plotter.execute(cmd)
                 if msg is not None:
                     print(msg)
-            except BadCommandError:
-                print(cmd + " - bad command, line " + counter + ".")
-                return
-            except NotCalibratedError:
-                print(cmd + " - plotter is not calibrated, line " + counter + ".")
+            except CommandError as ex:
+                print("{} - {}, line {}.".format(cmd, str(ex), counter), file=sys.stderr)
                 return
             counter += 1
+
 
 if __name__ == "__main__":
     print("Executing commands from print.plo...\n")

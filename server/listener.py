@@ -4,7 +4,7 @@ import threading
 import time
 import signal
 import sys
-from hardware import Plotter, BadCommandError, NotCalibratedError
+from hardware import Plotter, CommandError, NotCalibratedError
 
 queue = Queue()
 
@@ -20,9 +20,8 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
                 m = str(data, 'ascii')
                 print("{} wrote: {}".format(self.client_address[0], m))
                 queue.put((m, self.request))
-
-        except Exception as ex:
-            print(ex)
+        except Exception as e:
+            print(e)
         finally:
             self.request.close()
             print(self.client_address[0] + " disconnected!")
@@ -37,7 +36,7 @@ def serve():
     server.serve_forever()
 
 
-def signal_handler(signal, frame):
+def signal_handler(*args):
     print('\nCtrl-C pressed, quitting...!')
     sys.exit(0)
 
@@ -61,12 +60,12 @@ if __name__ == "__main__":
 
         begintime = time.time()
         try:
-            msg = plotter.exec(command)
+            msg = plotter.execute(command)
             success = True
-        except BadCommandError:
-            msg = "Bad command"
-        except NotCalibratedError:
-            msg = "Not calibrated! Use C [x] [y]"
+        except NotCalibratedError as ex:
+            msg = str(ex) + " Use C [x] [y]"
+        except CommandError as ex:
+            msg = str(ex)
         endtime = time.time()
 
         if msg is not None:
@@ -84,7 +83,3 @@ if __name__ == "__main__":
         print(info)
         socket.sendall(bytes(info, "utf-8"))
     thread.join(10)
-
-
-
-
