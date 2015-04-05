@@ -183,6 +183,7 @@ class Servo:
                 sleep(0.01)
         self.state = status
 
+
 class Plotter:
     m1, m2 = [0, 0], [52861, 1337]
     spr = 200  # steps per revolution in full step mode
@@ -338,7 +339,15 @@ class Plotter:
         return self._power
 
     def setpower(self, value):
-        self._power = bool(int(value))
+        value = bool(int(value))
+        if self._power == value:
+            if self.getdebug():
+                state = "OFF"
+                if value:
+                    state = "ON"
+                print("POWER: already turned " + state)
+            return
+        self._power = value
 
         if self.getdebug():
             state = "OFF"
@@ -354,7 +363,11 @@ class Plotter:
         return self._debug
 
     def setdebug(self, value):
-        self._debug = bool(int(value))
+        value = bool(int(value))
+        if self._debug == value:
+            return
+        self._debug = value
+
         state = "disabled"
         if self.getdebug():
             state = "enabled"
