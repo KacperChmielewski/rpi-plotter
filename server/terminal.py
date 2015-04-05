@@ -4,7 +4,7 @@ import sys
 if __name__ == "__main__":
     print("-= vPlotter Interactive Terminal =-\n")
 
-    plotter = Plotter()
+    plotter = Plotter(debug=True)
     print("Ready.")
     while True:
         try:
@@ -15,7 +15,7 @@ if __name__ == "__main__":
             if msg is not None:
                 print(msg)
         except CommandError as ex:
-            print("Error: " + str(ex).lower(), file=sys.stderr)
+            print("ERROR: " + str(ex), file=sys.stderr)
         except KeyboardInterrupt:
             print("\nCtrl+C pressed, quitting...")
             exit()

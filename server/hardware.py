@@ -183,30 +183,32 @@ class Plotter:
     ms = 16  # (1, 2, 4, 8, 16)
     calibrated = False
     right_engine, left_engine = None, None
-    debug = False
+    _power, _debug = False, False
 
-    def __init__(self):
+    def __init__(self, power=True, debug=False):
         GPIO.setmode(GPIO.BOARD)
         GPIO.setwarnings(False)
-        print("Initializing shift register")
+        self.setdebug(debug)
+        if self.getdebug():
+            print("Initializing shift register...")
         self.sr = ShiftRegister(15, 11, 13, 2)
 
-        print("Initializing ATX power supply")
-        self.power = ATX(7, 15, self.sr)
+        if self.getdebug():
+            print("Initializing ATX power supply...")
+        self.atxpower = ATX(7, 15, self.sr)
 
-        print("Initializing left engine")
+        if self.getdebug():
+            print("Initializing left engine...")
         self.left_engine = A4988(26, 24, 14, 13, 12, 11, 10, 9, self.sr, side=0, revdir=True)
-        print("Initializing right engine")
+        if self.getdebug():
+            print("Initializing right engine...")
         self.right_engine = A4988(18, 16, 6, 5, 4, 3, 2, 1, self.sr, side=1)
 
-        print("Initializing separator")
+        if self.getdebug():
+            print("Initializing separator...")
         self.separator = Servo(23)
 
-        print("Turning power and motors on")
-        self.power.power(True)
-        self.power.loadr(True)
-        self.left_engine.power(True)
-        self.right_engine.power(True)
+        self.setpower(power)
         self.commands = {
             'L': self.moveleft,
             'R': self.moveright,
@@ -219,7 +221,8 @@ class Plotter:
             'C': self.calibrate,
             'COR': self.getcoord,
             'LEN': self.getlength,
-            'DEBUG': self.setdebug,  # only in terminal
+            'POWER': self.setpower,
+            'DEBUG': self.setdebug  # only in terminal
             # 'E': self.poweroff
         }
 
@@ -295,10 +298,10 @@ class Plotter:
             raise NotCalibratedError()
         else:
             destination = ctl((int(x), int(y)), self.m1, self.m2)
-            if self.debug:
+            if self.getdebug():
                 print("Destination: " + destination)
             change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
-            if self.debug:
+            if self.getdebug():
                 print("Change: " + str(change))
             self.moveboth(change[0], change[1], speed)
 
@@ -325,8 +328,31 @@ class Plotter:
     def getlength():
         return length
 
+    def getpower(self):
+        return self._power
+
+    def setpower(self, value):
+        self._power = bool(int(value))
+
+        if self.getdebug():
+            state = "OFF"
+            if self.getpower():
+                state = "ON"
+            print("Turning {} power and motors...".format(state))
+        self.atxpower.power(self.getpower())
+        self.atxpower.loadr(self.getpower())
+        self.left_engine.power(self.getpower())
+        self.right_engine.power(self.getpower())
+
+    def getdebug(self):
+        return self._debug
+
     def setdebug(self, value):
-        self.debug = bool(value)
+        self._debug = bool(int(value))
+        state = "disabled"
+        if self.getdebug():
+            state = "enabled"
+        print("Debug mode " + state)
 
     def execute(self, command):
         cmdparts = command.upper().split(' ')
