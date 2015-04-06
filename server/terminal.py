@@ -22,8 +22,8 @@ if __name__ == "__main__":
             command = command.strip()
             if command == "":
                 continue
-            msg = plotter.execute(command)
-            if msg is not None:
-                print(msg)
+            for msg in plotter.execute(command):
+                if msg is not None:
+                    print(msg)
         except CommandError as ex:
             print("ERROR: " + str(ex), file=sys.stderr)

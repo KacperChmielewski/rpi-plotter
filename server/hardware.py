@@ -1,5 +1,6 @@
 from mathextra import *
 from time import sleep
+import re
 
 try:
     import RPi.GPIO as GPIO
@@ -191,6 +192,7 @@ class Plotter:
     calibrated = False
     right_engine, left_engine = None, None
     _power, _debug = False, False
+    beginpoint = None
 
     def __init__(self, power=True, debug=False):
         GPIO.setmode(GPIO.BOARD)
@@ -216,64 +218,32 @@ class Plotter:
         self.separator = Servo(23)
 
         self.setpower(power)
-        self.commands = {
-            'L': self.moveleft,
-            'R': self.moveright,
-            'V': self.movevertical,
-            'H': self.movehorizontal,
-            'B': self.moveboth,
-            'GOTO': self.goto,
-            'P': self.pause,
-            'S': self.setseparator,
-            'C': self.calibrate,
-            'COR': self.getcoord,
-            'LEN': self.getlength,
-            'POWER': self.setpower,
-            'DEBUG': self.setdebug  # only in terminal
+
+        # SVG Path Data and plotter specific commands
+        # http://www.w3.org/TR/SVGTiny12/paths.html
+        self.commands = {  # commandname: (action, argument_count)
+            # SVG Path Data
+            'M': (self.moveto, 2),
+            'm': (self.moveto_rel, 2),
+            'L': (self.lineto, 2),
+            'l': (self.lineto_rel, 2),
+            'V': (self.vertical, 1),
+            'v': (self.vertical_rel, 1),
+            'H': (self.horizontal, 1),
+            'h': (self.horizontal_rel, 1),
+            'Z': (self.closepath, 0),
+            'z': (self.closepath, 0),
+
+            # Plotter
+            'SLP': (sleep, 1),
+            'SEP': (self.setseparator, 1),
+            'CAL': (self.calibrate, 2),
+            'COR': (self.getcoord, 0),
+            'LEN': (self.getlength, 0),
+            'PWR': (self.setpower, 1),
+            'DBG': (self.setdebug, 1)  # prints info in terminal
             # 'E': self.poweroff
         }
-
-    @staticmethod
-    def move(motor, steps, speed):
-        steps = int(steps)
-        speed = float(speed)
-        if sign(steps) == 1:
-            motor.direction = 1
-        else:
-            motor.direction = 0
-        motor.move(steps, speed)
-
-    def moveleft(self, steps, speed):
-        self.move(self.left_engine, steps, speed)
-
-    def moveright(self, steps, speed):
-        self.move(self.right_engine, steps, speed)
-
-    def movevertical(self, steps, speed):
-        if sign(steps) == 1:
-            self.left_engine.direction = 1
-            self.right_engine.direction = 1
-        else:
-            self.left_engine.direction = 0
-            self.right_engine.direction = 0
-
-        speed *= 2
-        for i in range(abs(int(steps))):
-            self.left_engine.move(1, speed)
-            self.right_engine.move(1, speed)
-
-    def movehorizontal(self, steps, speed):
-        if sign(steps) == 1:
-            self.left_engine.direction = 1
-            self.right_engine.direction = 0
-        else:
-            self.left_engine.direction = 0
-            self.right_engine.direction = 1
-
-        speed *= 2
-        for i in range(abs(int(steps))):
-            self.left_engine.move(1, speed)
-            self.right_engine.move(1, speed)
 
     def moveboth(self, left, right, speed):
         gleft = int(left)
@@ -300,21 +270,42 @@ class Plotter:
                 self.left_engine.move(td, float(speed))
                 done = htbd
 
-    def goto(self, x, y, speed):
+    def moveto(self, x, y, speed=1, sep=False):
         if not self.calibrated:
             raise NotCalibratedError()
         else:
             destination = ctl([int(x), int(y)], self.m1, self.m2)
             if self.getdebug():
                 print("Destination: " + str(destination))
-            change = [int(destination[0] - length[0]), int(destination[1] - length[1])]
-            if self.getdebug():
-                print("Change: " + str(change))
-            self.moveboth(change[0], change[1], speed)
+            change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
+            self.moveto_rel(change[0], change[1], speed, sep)
 
-    @staticmethod
-    def pause(ms):
-        sleep(int(ms))
+    def moveto_rel(self, x, y, speed=1, sep=False):
+        self.setseparator(sep)
+        if self.getdebug():
+            print("Change: " + str((x, y)))
+        self.moveboth(int(x), int(y), speed)
+
+    def lineto(self, x, y, speed=1):
+        self.moveto(x, y, speed, True)
+
+    def lineto_rel(self, x, y, speed=1):
+        self.moveto_rel(x, y, speed, True)
+
+    def vertical(self, y, speed=1):
+        self.moveto(length[0], y, speed, True)
+
+    def vertical_rel(self, y, speed=1):
+        self.moveto_rel(0, y, speed, True)
+
+    def horizontal(self, x, speed=1):
+        self.moveto(x, length[1], speed, True)
+
+    def horizontal_rel(self, x, speed=1):
+        self.moveto_rel(x, 0, speed, True)
+
+    def closepath(self, speed=1):
+        self.moveto(self.beginpoint[0], self.beginpoint[1], speed, sep=True)
 
     def setseparator(self, state):
         self.separator.set(int(state))
@@ -374,20 +365,30 @@ class Plotter:
         print("Debug mode " + state)
 
     def execute(self, command):
-        cmdparts = command.upper().split(' ')
-        command = cmdparts[0].strip()
-        commandargs = cmdparts[1:]
-        action = self.commands.get(command)
-        if not action:
-            raise CommandError(command + " - bad command!")
-        else:
-            try:
-                return action(*commandargs)
-            except TypeError as ex:
-                ex_msg = str(ex)
+        cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?\d*\.?\d+\s*)*)', command)
 
-                if all(x in ex_msg for x in ['takes', 'positional argument', 'given']):  # too many argument(s)
-                    raise CommandError("Too many arguments!")
-                elif all(x in ex_msg for x in ['missing', 'required positional argument']):  # missing argument(s)
-                    missing = ex_msg.rsplit(':', 1)[1].strip()
-                    raise CommandError("Missing arguments: " + missing)
+        for c in cmdlist:
+            cmdname = c[0]
+            if len(cmdname) > 1:
+                cmdname = cmdname.upper()
+            c_str = str(cmdname) + str(c[1])
+            cmdinfo = self.commands.get(cmdname)
+            if not cmdinfo:
+                raise CommandError(c_str + " - bad command!")
+
+            action = cmdinfo[0]
+            argcount = cmdinfo[1]
+            cmdargs = c[1].strip().split(' ')
+            cmdargs = list(filter(None, cmdargs))
+
+            if len(cmdargs) > 0 and argcount == 0:
+                raise CommandError(c_str + " - command takes no parameters!")
+            elif argcount > 0 and len(cmdargs) % argcount != 0:
+                raise CommandError(c_str + " - incorrect number of parameters!")
+            if len(cmdargs) > 0:
+                cmdargs = [int(x) for x in cmdargs]
+                cmdargs = [cmdargs[i:i+argcount] for i in range(0, len(cmdargs), argcount)]
+                for x in cmdargs:
+                    yield action(*x)
+            else:
+                yield action()
