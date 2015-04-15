@@ -305,7 +305,8 @@ class Plotter:
         self.moveto_rel(x, 0, speed, True)
 
     def closepath(self, speed=1):
-        self.moveto(self.beginpoint[0], self.beginpoint[1], speed, sep=True)
+        raise NotImplementedError()
+        # self.moveto(self.beginpoint[0], self.beginpoint[1], speed, sep=True)
 
     def setseparator(self, state):
         self.separator.set(int(state))
@@ -367,11 +368,14 @@ class Plotter:
     def execute(self, command):
         cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?\d*\.?\d+\s*)*)', command)
 
+        if not cmdlist:
+            raise CommandError(command + " - syntax error!")
+
         for c in cmdlist:
             cmdname = c[0]
             if len(cmdname) > 1:
                 cmdname = cmdname.upper()
-            c_str = str(cmdname) + str(c[1])
+            c_str = str(cmdname) + " " + str(c[1])
             cmdinfo = self.commands.get(cmdname)
             if not cmdinfo:
                 raise CommandError(c_str + " - bad command!")
@@ -383,7 +387,7 @@ class Plotter:
 
             if len(cmdargs) > 0 and argcount == 0:
                 raise CommandError(c_str + " - command takes no parameters!")
-            elif argcount > 0 and len(cmdargs) % argcount != 0:
+            elif argcount != len(cmdargs):
                 raise CommandError(c_str + " - incorrect number of parameters!")
             if len(cmdargs) > 0:
                 cmdargs = [int(x) for x in cmdargs]

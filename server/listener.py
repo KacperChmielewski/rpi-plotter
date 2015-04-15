@@ -14,7 +14,9 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
         try:
             print("{}:{} connected!".format(self.client_address[0], self.client_address[1]))
             while True:
-                data = self.request.recv(1024)
+                data = self.request.recv(1536)
+                if data == b'\x00':
+                    continue
                 if not data:
                     break
                 m = str(data, 'ascii')
@@ -53,22 +55,25 @@ if __name__ == "__main__":
         comm_socket = queue.get()
         command = comm_socket[0]
         socket = comm_socket[1]
+
         socket.sendall(bytes("EXEC|" + command, "utf-8"))
 
-        msg = None
+        msg = ""
         success = False
 
         begintime = time.time()
         try:
-            msg = plotter.execute(command)
+            for result in plotter.execute(command):
+                if result:
+                    msg += str(result) + '\n'
             success = True
         except NotCalibratedError as ex:
-            msg = str(ex) + " Use C [x] [y]"
+            msg = str(ex) + " Use CAL <x> <y>"
         except CommandError as ex:
             msg = str(ex)
         endtime = time.time()
 
-        if msg is not None:
+        if msg:
             msg = str(msg).strip()
 
         if success:
