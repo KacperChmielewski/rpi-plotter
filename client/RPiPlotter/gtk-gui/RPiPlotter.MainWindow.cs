@@ -85,7 +85,7 @@ namespace RPiPlotter
 			this.ControlModeAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("Control mode");
 			w1.Add (this.ControlModeAction, null);
 			this.SVGModeAction = new global::Gtk.RadioAction ("SVGModeAction", global::Mono.Unix.Catalog.GetString ("SVG mode"), null, null, 0);
-			this.SVGModeAction.Group = this.ControlModeAction.Group;
+			this.SVGModeAction.Group = this.CommandModeAction.Group;
 			this.SVGModeAction.Sensitive = false;
 			this.SVGModeAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("SVG mode");
 			this.SVGModeAction.Visible = false;
@@ -156,6 +156,7 @@ namespace RPiPlotter
 			this.commandEntry.CanFocus = true;
 			this.commandEntry.Name = "commandEntry";
 			this.commandEntry.IsEditable = true;
+			this.commandEntry.MaxLength = 1000;
 			this.commandEntry.InvisibleChar = '●';
 			this.commandhbox.Add (this.commandEntry);
 			global::Gtk.Box.BoxChild w6 = ((global::Gtk.Box.BoxChild)(this.commandhbox [this.commandEntry]));

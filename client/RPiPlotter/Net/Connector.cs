@@ -31,32 +31,48 @@ namespace RPiPlotter
 
 
 		TcpClient client;
-		Thread receiverThread;
+		Thread receiverThread, checkThread;
 
-		public Connector(Gtk.Window parent)
+		public Connector (Gtk.Window parent)
 		{
 			Parent = parent;
 		}
 
-		public Connector(Gtk.Window parent, string hostname, int port)
+		public Connector (Gtk.Window parent, string hostname, int port)
 			: this (parent)
 		{
 			Hostname = hostname;
 			Port = port;
 		}
 
-		public void Connect()
+		public void Connect ()
 		{
 			client = new TcpClient (Hostname, Port);
+
+			checkThread = new Thread (() => {
+				var stream = client.GetStream ();
+				stream.WriteTimeout = 1;
+				while (checkThread.ThreadState != ThreadState.AbortRequested) {
+					try {
+						stream.WriteByte (0);
+					} catch (InvalidOperationException ex) {
+						if (ConnectionError != null)
+							ConnectionError (this, new UnhandledExceptionEventArgs (ex, true));
+						Disconnect ();
+					}
+					Thread.Sleep (1000);
+				}
+			});
+			checkThread.Start ();
 
 			receiverThread = new Thread (() => {
 				var stream = client.GetStream ();
 				while (receiverThread.ThreadState != ThreadState.AbortRequested) {
-					var readBuffer = new byte[1024];
+					var readBuffer = new byte[2048];
 					int bytesCount = 0;
 					try {
 						bytesCount = stream.Read (readBuffer, 0, readBuffer.Length);
-					} catch (Exception ex) {
+					} catch (Exception) {
 						return;
 					}
 					if (bytesCount == 0) {
@@ -64,7 +80,7 @@ namespace RPiPlotter
 						return;
 					}
 					string msg = Encoding.UTF8.GetString (readBuffer, 0, bytesCount);
-						if (!msg.Contains ("|"))
+					if (!msg.Contains ("|"))
 						continue;
 
 					var msgParts = msg.Split ('|');
@@ -99,20 +115,21 @@ namespace RPiPlotter
 				Connected (this, new EventArgs ());
 		}
 
-		public void Disconnect()
+		public void Disconnect ()
 		{
 			if (!IsConnected)
 				return;
+			checkThread.Abort ();
 			receiverThread.Abort ();
 			client.Close ();
 			if (Disconnected != null)
 				Disconnected (this, new EventArgs ());
 		}
 
-		public void Send(string msg)
+		public void Send (string msg)
 		{
 			try {
-				var msgBytes = Encoding.ASCII.GetBytes (msg.ToUpper ());
+				var msgBytes = Encoding.ASCII.GetBytes (msg);
 				client.Client.Send (msgBytes);
 			} catch (Exception ex) {
 				if (ConnectionError != null)

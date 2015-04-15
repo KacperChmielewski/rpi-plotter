@@ -189,6 +189,7 @@
                         <property name="MemberName" />
                         <property name="CanFocus">True</property>
                         <property name="IsEditable">True</property>
+                        <property name="MaxLength">1000</property>
                         <property name="InvisibleChar">●</property>
                         <signal name="Activated" handler="OnCommandEntryActivated" />
                       </widget>

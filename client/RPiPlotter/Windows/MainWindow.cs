@@ -9,7 +9,7 @@ namespace RPiPlotter
 		Connector connector;
 		Gdk.Pixbuf donePixbuf, errorPixbuf, executingPixbuf;
 
-		public MainWindow() :
+		public MainWindow () :
 			base (WindowType.Toplevel)
 		{
 			this.Build ();
@@ -17,7 +17,7 @@ namespace RPiPlotter
 			this.LoadIcons ();
 		}
 
-		void SetupCommandTreeView()
+		void SetupCommandTreeView ()
 		{
 			commandListStore = new ListStore (typeof(Gdk.Pixbuf), typeof(string), typeof(string), typeof(bool));
 			commandTreeView.Model = commandListStore;
@@ -28,7 +28,7 @@ namespace RPiPlotter
 			commandTreeView.AppendColumn ("Time", new CellRendererText (), "text", 2);
 		}
 
-		void LoadIcons()
+		void LoadIcons ()
 		{
 			var iconTheme = new IconTheme ();
 
@@ -37,14 +37,14 @@ namespace RPiPlotter
 			executingPixbuf = new Gdk.Pixbuf ("Icons/execute.png");
 		}
 
-		void OnQuit(object o, EventArgs args)
+		void OnQuit (object o, EventArgs args)
 		{
 			if (connector != null)
 				connector.Disconnect ();
 			Application.Quit ();
 		}
 
-		void OnConnectActionActivated(object sender, EventArgs e)
+		void OnConnectActionActivated (object sender, EventArgs e)
 		{
 			ConnectDialog connectDialog = new ConnectDialog (this);
 			connectDialog.Response += (o, args) => {
@@ -77,13 +77,13 @@ namespace RPiPlotter
 		}
 
 
-		void OnConnectorConnected(object sender, EventArgs e)
+		void OnConnectorConnected (object sender, EventArgs e)
 		{
 			disconnectAction.Sensitive = true;
 			contentvbox.Sensitive = true;
 		}
 
-		void OnConnectorConnectionError(object sender, UnhandledExceptionEventArgs e)
+		void OnConnectorConnectionError (object sender, UnhandledExceptionEventArgs e)
 		{
 			DisconnectUIChange ();
 			var dialog = new Gtk.MessageDialog (this,
@@ -95,46 +95,46 @@ namespace RPiPlotter
 			dialog.Destroy ();
 		}
 
-		void DisconnectUIChange()
+		void DisconnectUIChange ()
 		{
 			disconnectAction.Sensitive = false;
 			contentvbox.Sensitive = false;
 			commandListStore.Clear ();
 		}
 
-		void OnConnectorDisconnected(object sender, EventArgs e)
+		void OnConnectorDisconnected (object sender, EventArgs e)
 		{
 			DisconnectUIChange ();
 		}
 
-		protected void OnDisconnectActionActivated(object sender, EventArgs e)
+		protected void OnDisconnectActionActivated (object sender, EventArgs e)
 		{
 			connector.Disconnect ();
 		}
 
-		void SendCommand()
+		void SendCommand ()
 		{
 			if (string.IsNullOrWhiteSpace (commandEntry.Text))
 				return;
-			var command = commandEntry.Text.Trim ().ToUpper ();
+			var command = commandEntry.Text.Trim ();
 			connector.Send (command);
 			commandEntry.Text = "";
 			var iter = commandListStore.AppendValues (null, command);
 			commandTreeView.ScrollToCell (commandListStore.GetPath (iter), commandTreeView.Columns [0], true, 0, 0);
 		}
 
-		protected void OnSendcommandButtonClicked(object sender, EventArgs e)
+		protected void OnSendcommandButtonClicked (object sender, EventArgs e)
 		{
 			SendCommand ();
 
 		}
 
-		protected void OnCommandEntryActivated(object sender, EventArgs e)
+		protected void OnCommandEntryActivated (object sender, EventArgs e)
 		{
 			SendCommand ();
 		}
 
-		void HandleCommandFail(object sender, CommandEventArgs e)
+		void HandleCommandFail (object sender, CommandEventArgs e)
 		{
 			var index = 0;
 			foreach (object[] row in commandListStore) {
@@ -152,6 +152,7 @@ namespace RPiPlotter
 					             Gtk.DialogFlags.DestroyWithParent, 
 					             Gtk.MessageType.Warning, 
 					             Gtk.ButtonsType.Ok,
+					             false,
 					             "Server: " + e.Message);
 				dialog.Run ();
 				dialog.Destroy ();
@@ -167,7 +168,7 @@ namespace RPiPlotter
 			}
 		}
 
-		void HandleCommandDone(object sender, CommandDoneEventArgs e)
+		void HandleCommandDone (object sender, CommandDoneEventArgs e)
 		{
 			var index = 0;
 			foreach (object[] row in commandListStore) {
@@ -192,7 +193,7 @@ namespace RPiPlotter
 			}
 		}
 
-		void HandleCommandExecuting(object sender, CommandEventArgs e)
+		void HandleCommandExecuting (object sender, CommandEventArgs e)
 		{
 			var index = 0;
 			foreach (object[] row in commandListStore) {
