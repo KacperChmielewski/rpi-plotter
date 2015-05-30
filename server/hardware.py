@@ -233,6 +233,7 @@ class Plotter:
             'h': (self.horizontal_rel, 1),
             'Z': (self.closepath, 0),
             'z': (self.closepath, 0),
+            # TODO: curves
 
             # Plotter
             'SLP': (sleep, 1),
@@ -375,7 +376,7 @@ class Plotter:
             cmdname = c[0]
             if len(cmdname) > 1:
                 cmdname = cmdname.upper()
-            c_str = str(cmdname) + " " + str(c[1])
+            c_str = (str(cmdname) + " " + str(c[1])).strip()
             cmdinfo = self.commands.get(cmdname)
             if not cmdinfo:
                 raise CommandError(c_str + " - bad command!")

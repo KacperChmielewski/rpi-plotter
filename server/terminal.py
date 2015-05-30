@@ -6,14 +6,14 @@ plotter = None
 
 
 def signal_handler(*args):
-    print('\nCtrl-C pressed, quitting...')
+    print('\nCtrl+C pressed, quitting...')
     if plotter:
         plotter.setpower(False)
     sys.exit(0)
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
-    print("-= vPlotter Interactive Terminal =-\n")
+    print("-= vPlotter Interactive Terminal =-\nPress Ctrl+C to terminate")
     plotter = Plotter(debug=True)
     print("Ready.")
     while True:
