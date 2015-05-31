@@ -86,5 +86,8 @@ if __name__ == "__main__":
             info += "|" + msg
 
         print(info)
-        socket.sendall(bytes(info, "utf-8"))
+        try:
+            socket.sendall(bytes(info, "utf-8"))
+        except OSError:
+            pass
     thread.join(10)

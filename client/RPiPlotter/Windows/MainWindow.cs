@@ -116,9 +116,14 @@ namespace RPiPlotter
 		{
 			if (string.IsNullOrWhiteSpace (commandEntry.Text))
 				return;
-			var command = commandEntry.Text.Trim ();
-			connector.Send (command);
+			SendCommand (commandEntry.Text);
 			commandEntry.Text = "";
+		}
+
+		void SendCommand (string command)
+		{
+			command = command.Trim ();
+			connector.Send (command);
 			var iter = commandListStore.AppendValues (null, command);
 			commandTreeView.ScrollToCell (commandListStore.GetPath (iter), commandTreeView.Columns [0], true, 0, 0);
 		}
@@ -126,12 +131,21 @@ namespace RPiPlotter
 		protected void OnSendcommandButtonClicked (object sender, EventArgs e)
 		{
 			SendCommand ();
-
 		}
 
 		protected void OnCommandEntryActivated (object sender, EventArgs e)
 		{
 			SendCommand ();
+		}
+
+		protected void OnCommandTreeViewRowActivated (object o, RowActivatedArgs args)
+		{
+			TreeIter iter;
+			commandListStore.GetIter (out iter, args.Path);
+			if ((bool)commandListStore.GetValue (iter, 3) == true) {
+				SendCommand ((string)commandListStore.GetValue (iter, 1));
+			}
+
 		}
 
 		void HandleCommandFail (object sender, CommandEventArgs e)
@@ -181,6 +195,7 @@ namespace RPiPlotter
 			if (commandListStore.GetIterFromString (out iter, index.ToString ())) {
 				commandListStore.SetValue (iter, 0, donePixbuf);
 				commandListStore.SetValue (iter, 2, e.ExecutionTime);
+				commandListStore.SetValue (iter, 3, true);
 			}
 			if (!string.IsNullOrEmpty (e.Message)) {
 				var dialog = new Gtk.MessageDialog (this,
@@ -205,6 +220,16 @@ namespace RPiPlotter
 			TreeIter iter;
 			if (commandListStore.GetIterFromString (out iter, index.ToString ())) {
 				commandListStore.SetValue (iter, 0, executingPixbuf);
+			}
+		}
+
+		protected void OnPreviewActionActivated (object sender, EventArgs e)
+		{
+			var action = sender as ToggleAction;
+			if (action.Active) {
+				// TODO: enable preview
+			} else {
+				// TODO: disable preview
 			}
 		}
 	}

@@ -101,6 +101,14 @@
         <property name="Label" translatable="yes">Command reference</property>
         <property name="ShortLabel" translatable="yes">Command reference</property>
       </action>
+      <action id="PreviewAction">
+        <property name="Type">Toggle</property>
+        <property name="Label" translatable="yes">Preview</property>
+        <property name="ShortLabel" translatable="yes">Preview</property>
+        <property name="DrawAsRadio">False</property>
+        <property name="Active">False</property>
+        <signal name="Activated" handler="OnPreviewActionActivated" />
+      </action>
     </action-group>
     <property name="MemberName" />
     <property name="Title" translatable="yes">RPi Plotter Controller</property>
@@ -124,6 +132,8 @@
                 <node type="Menuitem" action="CommandModeAction" />
                 <node type="Menuitem" action="ControlModeAction" />
                 <node type="Menuitem" action="SVGModeAction" />
+                <node type="Separator" />
+                <node type="Menuitem" action="PreviewAction" />
               </node>
               <node type="Menu" action="HelpAction">
                 <node type="Menuitem" action="CommandReferenceAction" />
@@ -160,6 +170,7 @@
                         <property name="CanFocus">True</property>
                         <property name="ShowScrollbars">True</property>
                         <property name="EnableSearch">False</property>
+                        <signal name="RowActivated" handler="OnCommandTreeViewRowActivated" />
                       </widget>
                     </child>
                   </widget>

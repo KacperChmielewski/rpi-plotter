@@ -28,6 +28,8 @@ namespace RPiPlotter
 		
 		private global::Gtk.Action CommandReferenceAction;
 		
+		private global::Gtk.ToggleAction PreviewAction;
+		
 		private global::Gtk.VBox mainvbox;
 		
 		private global::Gtk.MenuBar menubar;
@@ -96,6 +98,9 @@ namespace RPiPlotter
 			this.CommandReferenceAction = new global::Gtk.Action ("CommandReferenceAction", global::Mono.Unix.Catalog.GetString ("Command reference"), null, null);
 			this.CommandReferenceAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("Command reference");
 			w1.Add (this.CommandReferenceAction, null);
+			this.PreviewAction = new global::Gtk.ToggleAction ("PreviewAction", global::Mono.Unix.Catalog.GetString ("Preview"), null, null);
+			this.PreviewAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("Preview");
+			w1.Add (this.PreviewAction, null);
 			this.UIManager.InsertActionGroup (w1, 0);
 			this.AddAccelGroup (this.UIManager.AccelGroup);
 			this.Name = "RPiPlotter.MainWindow";
@@ -106,7 +111,7 @@ namespace RPiPlotter
 			this.mainvbox.Name = "mainvbox";
 			this.mainvbox.Spacing = 6;
 			// Container child mainvbox.Gtk.Box+BoxChild
-			this.UIManager.AddUiFromString ("<ui><menubar name='menubar'><menu name='PlotterAction' action='PlotterAction'><menuitem name='connectAction' action='connectAction'/><menuitem name='disconnectAction' action='disconnectAction'/><separator/><menuitem name='quitAction' action='quitAction'/></menu><menu name='ViewAction' action='ViewAction'><menuitem name='CommandModeAction' action='CommandModeAction'/><menuitem name='ControlModeAction' action='ControlModeAction'/><menuitem name='SVGModeAction' action='SVGModeAction'/></menu><menu name='HelpAction' action='HelpAction'><menuitem name='CommandReferenceAction' action='CommandReferenceAction'/><separator/><menuitem name='aboutAction' action='aboutAction'/></menu></menubar></ui>");
+			this.UIManager.AddUiFromString ("<ui><menubar name='menubar'><menu name='PlotterAction' action='PlotterAction'><menuitem name='connectAction' action='connectAction'/><menuitem name='disconnectAction' action='disconnectAction'/><separator/><menuitem name='quitAction' action='quitAction'/></menu><menu name='ViewAction' action='ViewAction'><menuitem name='CommandModeAction' action='CommandModeAction'/><menuitem name='ControlModeAction' action='ControlModeAction'/><menuitem name='SVGModeAction' action='SVGModeAction'/><separator/><menuitem name='PreviewAction' action='PreviewAction'/></menu><menu name='HelpAction' action='HelpAction'><menuitem name='CommandReferenceAction' action='CommandReferenceAction'/><separator/><menuitem name='aboutAction' action='aboutAction'/></menu></menubar></ui>");
 			this.menubar = ((global::Gtk.MenuBar)(this.UIManager.GetWidget ("/menubar")));
 			this.menubar.Name = "menubar";
 			this.mainvbox.Add (this.menubar);
@@ -205,6 +210,8 @@ namespace RPiPlotter
 			this.connectAction.Activated += new global::System.EventHandler (this.OnConnectActionActivated);
 			this.disconnectAction.Activated += new global::System.EventHandler (this.OnDisconnectActionActivated);
 			this.quitAction.Activated += new global::System.EventHandler (this.OnQuit);
+			this.PreviewAction.Activated += new global::System.EventHandler (this.OnPreviewActionActivated);
+			this.commandTreeView.RowActivated += new global::Gtk.RowActivatedHandler (this.OnCommandTreeViewRowActivated);
 			this.commandEntry.Activated += new global::System.EventHandler (this.OnCommandEntryActivated);
 			this.sendcommandButton.Clicked += new global::System.EventHandler (this.OnSendcommandButtonClicked);
 		}

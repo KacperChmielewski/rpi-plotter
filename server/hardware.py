@@ -191,7 +191,7 @@ class Plotter:
     ms = 16  # (1, 2, 4, 8, 16)
     calibrated = False
     right_engine, left_engine = None, None
-    _power, _debug = False, False
+    _power, _debug, _preview = False, False, False
     beginpoint = None
 
     def __init__(self, power=True, debug=False):
@@ -242,7 +242,8 @@ class Plotter:
             'COR': (self.getcoord, 0),
             'LEN': (self.getlength, 0),
             'PWR': (self.setpower, 1),
-            'DBG': (self.setdebug, 1)  # prints info in terminal
+            'DBG': (self.setdebug, 1),  # prints info in terminal
+            'PRV': (self.setpreview, 1)
             # 'E': self.poweroff
         }
 
@@ -365,6 +366,21 @@ class Plotter:
         if self.getdebug():
             state = "enabled"
         print("Debug mode " + state)
+
+    def getpreview(self):
+        return self._preview
+
+    def setpreview(self, value):
+        value = bool(int(value))
+        if self._preview == value:
+            return
+        self._preview = value
+
+        state = "disabled"
+        if self.getdebug():
+            if self.getpreview():
+                state = "enabled"
+            print("Preview " + state)
 
     def execute(self, command):
         cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?\d*\.?\d+\s*)*)', command)
