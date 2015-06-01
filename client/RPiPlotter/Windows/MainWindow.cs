@@ -8,6 +8,7 @@ namespace RPiPlotter
 		ListStore commandListStore;
 		Connector connector;
 		Gdk.Pixbuf donePixbuf, errorPixbuf, executingPixbuf;
+		string commands = "";
 
 		public MainWindow () :
 			base (WindowType.Toplevel)

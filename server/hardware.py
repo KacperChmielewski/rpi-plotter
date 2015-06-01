@@ -192,7 +192,7 @@ class Plotter:
     calibrated = False
     right_engine, left_engine = None, None
     _power, _debug, _preview = False, False, False
-    beginpoint = None
+    beginpoint, controlpoint = None, None
 
     def __init__(self, power=True, debug=False):
         GPIO.setmode(GPIO.BOARD)
@@ -233,7 +233,15 @@ class Plotter:
             'h': (self.horizontal_rel, 1),
             'Z': (self.closepath, 0),
             'z': (self.closepath, 0),
-            # TODO: curves
+            'C': (self.curveto, 6),
+            'c': (self.curveto_rel, 6),
+            'S': (self.scurveto, 4),
+            's': (self.scurveto_rel, 4),
+            'Q': (self.qcurveto, 4),
+            'q': (self.qcurveto_rel, 4),
+            'T': (self.sqcurveto, 2),
+            't': (self.sqcurveto_rel, 2),
+            # TODO: elliptical arc command
 
             # Plotter
             'SLP': (sleep, 1),
@@ -310,6 +318,26 @@ class Plotter:
         raise NotImplementedError()
         # self.moveto(self.beginpoint[0], self.beginpoint[1], speed, sep=True)
 
+    def curveto(self, x1, y1, x2, y2, x, y, res=100):
+        if not self.calibrated:
+            raise NotCalibratedError()
+        else:
+            destination = ctl([int(x), int(y)], self.m1, self.m2)
+            if self.getdebug():
+                print("Destination: " + str(destination) + "\n1st ctrl. point: " + str((x1, y1)) + "\n2nd ctrl. point: "
+                      + str((x2, y2)))
+            change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
+            self.curveto_rel(x1, y1, x2, y2, change[0], change[1], res)
+
+    def curveto_rel(self, x1, y1, x2, y2, x, y, res=100):
+        for t in range(0, res):
+            bx = cubicbezier(t/res, x1, x2, x)
+            by = cubicbezier(t/res, y1, y2, y)
+            self.lineto_rel(bx, by)
+
+    def scurveto(self, x2, y2, x, y, res=100):
+        pass  # get the control point
+
     def setseparator(self, state):
         self.separator.set(int(state))
 
@@ -383,7 +411,14 @@ class Plotter:
             print("Preview " + state)
 
     def execute(self, command):
-        cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?\d*\.?\d+\s*)*)', command)
+        if not re.match(r'^\s*[A-Za-z]', command):
+            if len(command) < 15:
+                formatlen = len(command)
+            else:
+                formatlen = 15
+            raise CommandError(command[0:formatlen] + " - incorrect format!")
+
+        cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?\d*\.?\d+(?:\s|,)*)*)', command)
 
         if not cmdlist:
             raise CommandError(command + " - syntax error!")
@@ -398,17 +433,17 @@ class Plotter:
                 raise CommandError(c_str + " - bad command!")
 
             action = cmdinfo[0]
-            argcount = cmdinfo[1]
-            cmdargs = c[1].strip().split(' ')
-            cmdargs = list(filter(None, cmdargs))
+            action_argc = cmdinfo[1]
+            cmdargs = re.findall(r'[\w\.]+', c[1].strip())
+            cmdargs_len = len(cmdargs)
 
-            if len(cmdargs) > 0 and argcount == 0:
+            if cmdargs_len > 0 and action_argc == 0:
                 raise CommandError(c_str + " - command takes no parameters!")
-            elif argcount != len(cmdargs):
+            elif cmdargs_len % action_argc != 0:
                 raise CommandError(c_str + " - incorrect number of parameters!")
-            if len(cmdargs) > 0:
+            if cmdargs_len > 0:
                 cmdargs = [int(x) for x in cmdargs]
-                cmdargs = [cmdargs[i:i+argcount] for i in range(0, len(cmdargs), argcount)]
+                cmdargs = [cmdargs[i:i+action_argc] for i in range(0, cmdargs_len, action_argc)]
                 for x in cmdargs:
                     yield action(*x)
             else:
