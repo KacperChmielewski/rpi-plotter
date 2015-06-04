@@ -136,6 +136,8 @@ namespace RPiPlotter
 			this.Show ();
 			this.Response += new global::Gtk.ResponseHandler (this.OnResponse);
 			this.portEntry.Changed += new global::System.EventHandler (this.OnPortEntryChanged);
+			this.portEntry.Activated += new global::System.EventHandler (this.OnEntryActivated);
+			this.hostnameEntry.Activated += new global::System.EventHandler (this.OnEntryActivated);
 		}
 	}
 }

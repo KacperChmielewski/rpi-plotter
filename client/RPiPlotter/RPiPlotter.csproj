@@ -58,6 +58,7 @@
     <Compile Include="Net\CommandDoneEventArgs.cs" />
     <Compile Include="Windows\PreviewWindow.cs" />
     <Compile Include="gtk-gui\RPiPlotter.PreviewWindow.cs" />
+    <Compile Include="Net\DisconnectedEventArgs.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

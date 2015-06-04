@@ -27,6 +27,11 @@ class NotCalibratedError(CommandError):
         CommandError.__init__(self, "Plotter is not calibrated!")
 
 
+class ExecutionError(CommandError):
+    def __init__(self):
+        CommandError.__init__(self, "Execution stopped by user!")
+
+
 class ShiftRegister:
     t = 0
 
@@ -193,6 +198,7 @@ class Plotter:
     right_engine, left_engine = None, None
     _power, _debug, _preview = False, False, False
     beginpoint, controlpoint = None, None
+    _execpause, _execstop = False, False
 
     def __init__(self, power=True, debug=False):
         GPIO.setmode(GPIO.BOARD)
@@ -274,6 +280,11 @@ class Plotter:
                 rdir = 0
             self.right_engine.direction = rdir
             for i in range(1, abs(gright) + 1):
+                if self._execstop:
+                    self._execstop = False
+                    raise ExecutionError()
+                while self.getexecpause():
+                    sleep(0.1)
                 self.right_engine.move(1, float(speed))
                 htbd = int(i * rel)  # steps which Has To Be Done
                 td = htbd - done  # steps To Do
@@ -330,13 +341,40 @@ class Plotter:
             self.curveto_rel(x1, y1, x2, y2, change[0], change[1], res)
 
     def curveto_rel(self, x1, y1, x2, y2, x, y, res=100):
+        prevxy = (0, 0)
         for t in range(0, res):
-            bx = cubicbezier(t/res, x1, x2, x)
-            by = cubicbezier(t/res, y1, y2, y)
-            self.lineto_rel(bx, by)
+            bx = cubicbezier(t / res, 0, x1, x2, x)
+            by = cubicbezier(t / res, 0, y1, y2, y)
+            self.lineto_rel(bx - prevxy[0], by - prevxy[1])
+            prevxy = (bx, by)
 
     def scurveto(self, x2, y2, x, y, res=100):
-        pass  # get the control point
+        raise NotImplementedError()
+
+    def scurveto_rel(self, x2, y2, x, y, res=100):
+        raise NotImplementedError()
+
+    def qcurveto(self, x1, y1, x, y, res=100):
+        if not self.calibrated:
+            raise NotCalibratedError()
+        else:
+            destination = ctl([int(x), int(y)], self.m1, self.m2)
+            if self.getdebug():
+                print("Destination: " + str(destination) + "\n1st ctrl. point: " + str((x1, y1)))
+            change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
+            self.qcurveto_rel(x1, y1, change[0], change[1], res)
+
+    def qcurveto_rel(self, x1, y1, x, y, res=100):
+        for t in range(0, res):
+            bx = quadbezier(t / res, x1, x)
+            by = quadbezier(t / res, y1, y)
+            self.lineto_rel(bx, by)
+
+    def sqcurveto(self, x, y, res=100):
+        raise NotImplementedError()
+
+    def sqcurveto_rel(self, x, y, res=100):
+        raise NotImplementedError()
 
     def setseparator(self, state):
         self.separator.set(int(state))
@@ -410,6 +448,24 @@ class Plotter:
                 state = "enabled"
             print("Preview " + state)
 
+    def getexecpause(self):
+        return self._execpause
+
+    def setexecpause(self, value):
+        value = bool(int(value))
+        if self._execpause == value:
+            return
+        self._execpause = value
+
+        if self.getdebug():
+            if value:
+                print("Paused")
+            else:
+                print("Unpaused")
+
+    def stopexecute(self):
+        self._execstop = True
+
     def execute(self, command):
         if not re.match(r'^\s*[A-Za-z]', command):
             if len(command) < 15:
@@ -425,9 +481,10 @@ class Plotter:
 
         for c in cmdlist:
             cmdname = c[0]
+            c_str = (str(c[0]) + " " + str(c[1])).strip()
+
             if len(cmdname) > 1:
                 cmdname = cmdname.upper()
-            c_str = (str(cmdname) + " " + str(c[1])).strip()
             cmdinfo = self.commands.get(cmdname)
             if not cmdinfo:
                 raise CommandError(c_str + " - bad command!")
@@ -439,7 +496,8 @@ class Plotter:
 
             if cmdargs_len > 0 and action_argc == 0:
                 raise CommandError(c_str + " - command takes no parameters!")
-            elif cmdargs_len % action_argc != 0:
+            elif (action_argc > 0 and (cmdargs_len == 0 or cmdargs_len % action_argc != 0)) \
+                    or (action_argc == 1 and cmdargs_len > 1):
                 raise CommandError(c_str + " - incorrect number of parameters!")
             if cmdargs_len > 0:
                 cmdargs = [int(x) for x in cmdargs]

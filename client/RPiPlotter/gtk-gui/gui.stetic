@@ -107,7 +107,15 @@
         <property name="ShortLabel" translatable="yes">Preview</property>
         <property name="DrawAsRadio">False</property>
         <property name="Active">False</property>
-        <signal name="Activated" handler="OnPreviewActionActivated" />
+        <signal name="Toggled" handler="OnPreviewActionToggled" />
+      </action>
+      <action id="PauseExecutionAction">
+        <property name="Type">Toggle</property>
+        <property name="Label" translatable="yes">Pause execution</property>
+        <property name="ShortLabel" translatable="yes">Pause execution</property>
+        <property name="DrawAsRadio">False</property>
+        <property name="Active">False</property>
+        <signal name="Toggled" handler="OnPauseExecutionActionToggled" />
       </action>
     </action-group>
     <property name="MemberName" />
@@ -125,6 +133,8 @@
               <node type="Menu" action="PlotterAction">
                 <node type="Menuitem" action="connectAction" />
                 <node type="Menuitem" action="disconnectAction" />
+                <node type="Separator" />
+                <node type="Menuitem" action="PauseExecutionAction" />
                 <node type="Separator" />
                 <node type="Menuitem" action="quitAction" />
               </node>
@@ -203,6 +213,7 @@
                         <property name="MaxLength">1000</property>
                         <property name="InvisibleChar">●</property>
                         <signal name="Activated" handler="OnCommandEntryActivated" />
+                        <signal name="Changed" handler="OnCommandEntryChanged" />
                       </widget>
                       <packing>
                         <property name="Position">1</property>
@@ -212,6 +223,7 @@
                     <child>
                       <widget class="Gtk.Button" id="sendcommandButton">
                         <property name="MemberName" />
+                        <property name="Sensitive">False</property>
                         <property name="CanDefault">True</property>
                         <property name="HasDefault">True</property>
                         <property name="CanFocus">True</property>
@@ -234,6 +246,7 @@
                         <property name="Type">TextOnly</property>
                         <property name="Label" translatable="yes">PANIC!</property>
                         <property name="UseUnderline">True</property>
+                        <signal name="Clicked" handler="OnPanicButtonClicked" />
                       </widget>
                       <packing>
                         <property name="Position">3</property>
@@ -295,6 +308,7 @@
                     <property name="CanFocus">True</property>
                     <property name="IsEditable">True</property>
                     <property name="InvisibleChar">●</property>
+                    <signal name="Activated" handler="OnEntryActivated" />
                   </widget>
                   <packing>
                     <property name="LeftAttach">1</property>
@@ -354,6 +368,7 @@
                     <property name="MaxLength">5</property>
                     <property name="InvisibleChar">●</property>
                     <signal name="Changed" handler="OnPortEntryChanged" />
+                    <signal name="Activated" handler="OnEntryActivated" />
                   </widget>
                   <packing>
                     <property name="LeftAttach">3</property>
@@ -430,8 +445,21 @@
     <property name="Title" translatable="yes">PreviewWindow</property>
     <property name="WindowPosition">CenterOnParent</property>
     <child>
-      <widget class="Gtk.DrawingArea" id="drawingarea1">
+      <widget class="Gtk.ScrolledWindow" id="GtkScrolledWindow">
         <property name="MemberName" />
+        <property name="ShadowType">In</property>
+        <child>
+          <widget class="Gtk.Viewport" id="GtkViewport">
+            <property name="MemberName" />
+            <property name="ShadowType">None</property>
+            <child>
+              <widget class="Gtk.Image" id="previewImage">
+                <property name="MemberName" />
+                <property name="ShowScrollbars">True</property>
+              </widget>
+            </child>
+          </widget>
+        </child>
       </widget>
     </child>
   </widget>
