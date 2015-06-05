@@ -292,12 +292,12 @@ class Plotter:
                 done = htbd
 
     def moveto(self, x, y, speed=1, sep=False):
-		if not self.calibrated:
-			raise NotCalibratedError()
-		self.setseparator(sep)
-		destination = ctl([int(x), int(y)], self.m1, self.m2)
-		if self.getdebug():
-			print("Destination: " + str(destination))
+        if not self.calibrated:
+            raise NotCalibratedError()
+            self.setseparator(sep)
+            destination = ctl([int(x), int(y)], self.m1, self.m2)
+        if self.getdebug():
+            print("Destination: " + str(destination))
         change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
         if self.getdebug():
             print("Change: " + str(change))
@@ -305,13 +305,13 @@ class Plotter:
 
 
     def moveto_rel(self, x, y, speed=1, sep=False):
-		if not self.calibrated:
-			raise NotCalibratedError()
-		self.setseparator(sep)
-		currentpos = ltc(length, self.m1, self.m2)
-		destination = ctl([currentpos + int(x), currentpos + int(y)], self.m1, self.m2)
-		if self.getdebug():
-			print("Destination: " + str(destination))
+        if not self.calibrated:
+            raise NotCalibratedError()
+        self.setseparator(sep)
+        currentpos = ltc(length, self.m1, self.m2)
+        destination = ctl([currentpos + int(x), currentpos + int(y)], self.m1, self.m2)
+        if self.getdebug():
+            print("Destination: " + str(destination))
         change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
         if self.getdebug():
             print("Change: " + str(change))
