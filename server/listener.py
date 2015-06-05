@@ -64,7 +64,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
     plotter = Plotter()
-    thread = threading.Thread(target=serve, daemon=True)
+    thread = threading.Thread(target=serve)
+    thread.setDaemon(True)
     thread.start()
     while thread.isAlive:
         if queue.empty():

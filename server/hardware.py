@@ -191,7 +191,7 @@ class Servo:
 
 
 class Plotter:
-    m1, m2 = [0, 0], [52861, 1337]
+    m1, m2 = [0, 0], [81013, 0]
     spr = 200  # steps per revolution in full step mode
     ms = 16  # (1, 2, 4, 8, 16)
     calibrated = False
@@ -291,72 +291,75 @@ class Plotter:
                 self.left_engine.move(td, float(speed))
                 done = htbd
 
-    def moveto(self, x, y, speed=1, sep=False):
+    def moveto(self, x, y, speed=1, sep=True, savepoint=True):
         if not self.calibrated:
             raise NotCalibratedError()
-            self.setseparator(sep)
-            destination = ctl([int(x), int(y)], self.m1, self.m2)
-        if self.getdebug():
-            print("Destination: " + str(destination))
-        change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
-        if self.getdebug():
-            print("Change: " + str(change))
-        self.moveboth(change[0], change[1], speed)        
-
-
-    def moveto_rel(self, x, y, speed=1, sep=False):
-        if not self.calibrated:
-            raise NotCalibratedError()
+        if not self.beginpoint:
+            currentpos = ltc(length, self.m1, self.m2)
+            self.beginpoint = currentpos
         self.setseparator(sep)
-        currentpos = ltc(length, self.m1, self.m2)
-        destination = ctl([currentpos + int(x), currentpos + int(y)], self.m1, self.m2)
+        destination = ctl([int(x), int(y)], self.m1, self.m2)
         if self.getdebug():
             print("Destination: " + str(destination))
         change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
         if self.getdebug():
             print("Change: " + str(change))
         self.moveboth(change[0], change[1], speed)
+        if savepoint:
+            currentpos = ltc(length, self.m1, self.m2)
+            self.beginpoint = currentpos
 
-    def lineto(self, x, y, speed=1):
-        self.moveto(x, y, speed, True)
-
-    def lineto_rel(self, x, y, speed=1):
-        self.moveto_rel(x, y, speed, True)
-
-    def vertical(self, y, speed=1):
-        self.moveto(length[0], y, speed, True)
-
-    def vertical_rel(self, y, speed=1):
-        self.moveto_rel(0, y, speed, True)
-
-    def horizontal(self, x, speed=1):
-        self.moveto(x, length[1], speed, True)
-
-    def horizontal_rel(self, x, speed=1):
-        self.moveto_rel(x, 0, speed, True)
-
-    def closepath(self, speed=1):
-        raise NotImplementedError()
-        # self.moveto(self.beginpoint[0], self.beginpoint[1], speed, sep=True)
-
-    def curveto(self, x1, y1, x2, y2, x, y, res=100):
+    def moveto_rel(self, x, y, speed=1, sep=True, savepoint=True):
         if not self.calibrated:
             raise NotCalibratedError()
-        else:
-            destination = ctl([int(x), int(y)], self.m1, self.m2)
-            if self.getdebug():
-                print("Destination: " + str(destination) + "\n1st ctrl. point: " + str((x1, y1)) + "\n2nd ctrl. point: "
-                      + str((x2, y2)))
-            change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
-            self.curveto_rel(x1, y1, x2, y2, change[0], change[1], res)
+        self.setseparator(sep)
+        currentpos = ltc(length, self.m1, self.m2)
+        if not self.beginpoint:
+            self.beginpoint = currentpos
+        destination = ctl([currentpos[0] + int(x), currentpos[1] + int(y)], self.m1, self.m2)
+        if self.getdebug():
+            print("Destination: " + str(destination))
+        change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
+        if self.getdebug():
+            print("Change: " + str(change))
+        self.moveboth(change[0], change[1], speed)
+        if savepoint:
+            currentpos = ltc(length, self.m1, self.m2)
+            self.beginpoint = currentpos
+
+    def lineto(self, x, y, speed=1):
+        self.moveto(x, y, speed, False, False)
+
+    def lineto_rel(self, x, y, speed=1):
+        self.moveto_rel(x, y, speed, False, False)
+
+    def vertical(self, y, speed=1):
+        self.moveto(length[0], y, speed, False, False)
+
+    def vertical_rel(self, y, speed=1):
+        self.moveto_rel(0, y, speed, False, False)
+
+    def horizontal(self, x, speed=1):
+        self.moveto(x, length[1], speed, False, False)
+
+    def horizontal_rel(self, x, speed=1):
+        self.moveto_rel(x, 0, speed, False, False)
+
+    def closepath(self, speed=1):
+        self.moveto(self.beginpoint[0], self.beginpoint[1], speed, True, False)
+
+    def curveto(self, x1, y1, x2, y2, x, y, res=100):
+        start = ltc(length, self.m1, self.m2)
+        for t in range(0, res):
+            bx = cubicbezier(t / res, start[0], x1, x2, x)
+            by = cubicbezier(t / res, start[1], y1, y2, y)
+            self.lineto(bx, by)
 
     def curveto_rel(self, x1, y1, x2, y2, x, y, res=100):
-        prevxy = (0, 0)
         for t in range(0, res):
             bx = cubicbezier(t / res, 0, x1, x2, x)
             by = cubicbezier(t / res, 0, y1, y2, y)
-            self.lineto_rel(bx - prevxy[0], by - prevxy[1])
-            prevxy = (bx, by)
+            self.lineto_rel(bx, by)
 
     def scurveto(self, x2, y2, x, y, res=100):
         raise NotImplementedError()
@@ -365,19 +368,16 @@ class Plotter:
         raise NotImplementedError()
 
     def qcurveto(self, x1, y1, x, y, res=100):
-        if not self.calibrated:
-            raise NotCalibratedError()
-        else:
-            destination = ctl([int(x), int(y)], self.m1, self.m2)
-            if self.getdebug():
-                print("Destination: " + str(destination) + "\n1st ctrl. point: " + str((x1, y1)))
-            change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
-            self.qcurveto_rel(x1, y1, change[0], change[1], res)
+        start = ltc(length, self.m1, self.m2)
+        for t in range(0, res):
+            bx = quadbezier(t / res, start[0], x1, x)
+            by = quadbezier(t / res, start[1], y1, y)
+            self.lineto(bx, by)
 
     def qcurveto_rel(self, x1, y1, x, y, res=100):
         for t in range(0, res):
-            bx = quadbezier(t / res, x1, x)
-            by = quadbezier(t / res, y1, y)
+            bx = quadbezier(t / res, 0, x1, x)
+            by = quadbezier(t / res, 0, y1, y)
             self.lineto_rel(bx, by)
 
     def sqcurveto(self, x, y, res=100):
@@ -482,9 +482,9 @@ class Plotter:
                 formatlen = len(command)
             else:
                 formatlen = 15
-            raise CommandError(command[0:formatlen] + " - incorrect format!")
 
-        cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?\d*\.?\d+(?:\s|,)*)*)', command)
+        # cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?\d*\.?\d+(?:\s|,)*)*)', command)
+        cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?(\d((E|e)(\+|\-)\d+)?)*\.?(\d((E|e)(\+|\-)\d+)?)+(?:\s|,)*)*)', command)
 
         if not cmdlist:
             raise CommandError(command + " - syntax error!")
@@ -501,7 +501,7 @@ class Plotter:
 
             action = cmdinfo[0]
             action_argc = cmdinfo[1]
-            cmdargs = re.findall(r'[\w\.]+', c[1].strip())
+            cmdargs = re.findall(r'[\+\-\w\.]+', c[1].strip())
             cmdargs_len = len(cmdargs)
 
             if cmdargs_len > 0 and action_argc == 0:
@@ -510,7 +510,7 @@ class Plotter:
                     or (action_argc == 1 and cmdargs_len > 1):
                 raise CommandError(c_str + " - incorrect number of parameters!")
             if cmdargs_len > 0:
-                cmdargs = [int(x) for x in cmdargs]
+                cmdargs = [int(float(x)) for x in cmdargs]
                 cmdargs = [cmdargs[i:i+action_argc] for i in range(0, cmdargs_len, action_argc)]
                 for x in cmdargs:
                     yield action(*x)
