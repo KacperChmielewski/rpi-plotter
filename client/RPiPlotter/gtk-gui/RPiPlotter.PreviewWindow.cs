@@ -5,7 +5,6 @@ namespace RPiPlotter
 	public partial class PreviewWindow
 	{
 		private global::Gtk.ScrolledWindow GtkScrolledWindow;
-		
 		private global::Gtk.Image previewImage;
 
 		protected virtual void Build ()

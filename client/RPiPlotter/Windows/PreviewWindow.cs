@@ -64,9 +64,9 @@ namespace RPiPlotter
             document.AppendChild(svg);
             svg.SetAttribute("xmlns", "http://www.w3.org/2000/svg");
             svg.SetAttribute("version", "1.1");
-            svg.SetAttribute("width", "297mm");
-            svg.SetAttribute("height", "210mm");
-            svg.SetAttribute("viewBox", "0 0 1052.3622 744.09448");
+            svg.SetAttribute("width", "50000px");
+            svg.SetAttribute("height", "50000px");
+//            svg.SetAttribute("viewBox", "0 0 1052.3622 744.09448");
             var backgroundRect = document.CreateElement("rect");
             svg.AppendChild(backgroundRect);
             backgroundRect.SetAttribute("width", "100%");
@@ -101,7 +101,7 @@ namespace RPiPlotter
                 {
                     sw.Write(document.OuterXml);
                     sw.Flush();
-                }
+                }   
                 var pixbuf = Rsvg.Tool.PixbufFromFileAtZoom(tempPath, 0.8, 0.8);
                 Gtk.Application.Invoke((sender, e) =>
                     {
