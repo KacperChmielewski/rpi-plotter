@@ -292,20 +292,30 @@ class Plotter:
                 done = htbd
 
     def moveto(self, x, y, speed=1, sep=False):
-        if not self.calibrated:
-            raise NotCalibratedError()
-        else:
-            destination = ctl([int(x), int(y)], self.m1, self.m2)
-            if self.getdebug():
-                print("Destination: " + str(destination))
-            change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
-            self.moveto_rel(change[0], change[1], speed, sep)
+		if not self.calibrated:
+			raise NotCalibratedError()
+		self.setseparator(sep)
+		destination = ctl([int(x), int(y)], self.m1, self.m2)
+		if self.getdebug():
+			print("Destination: " + str(destination))
+        change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
+        if self.getdebug():
+            print("Change: " + str(change))
+        self.moveboth(change[0], change[1], speed)        
+
 
     def moveto_rel(self, x, y, speed=1, sep=False):
-        self.setseparator(sep)
+		if not self.calibrated:
+			raise NotCalibratedError()
+		self.setseparator(sep)
+		currentpos = ltc(length, self.m1, self.m2)
+		destination = ctl([currentpos + int(x), currentpos + int(y)], self.m1, self.m2)
+		if self.getdebug():
+			print("Destination: " + str(destination))
+        change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
         if self.getdebug():
-            print("Change: " + str((x, y)))
-        self.moveboth(int(x), int(y), speed)
+            print("Change: " + str(change))
+        self.moveboth(change[0], change[1], speed)
 
     def lineto(self, x, y, speed=1):
         self.moveto(x, y, speed, True)
