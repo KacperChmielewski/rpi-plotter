@@ -550,6 +550,7 @@ class Plotter:
                     yield action(*x)
             else:
                 yield action()
+            self.setseparator(True)
             self.poweroffthread.restart()
 
     class PowerOffThread(Thread):
