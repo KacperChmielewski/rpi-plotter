@@ -1,7 +1,7 @@
 from time import sleep
 
 OUT, BOARD = None, None
-
+isfake = True
 
 def setup(*args):
     pass

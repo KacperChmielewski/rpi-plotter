@@ -121,7 +121,7 @@ class A4988:
         mode = {1: '000', 2: '100', 4: '010', 8: '110', 16: '111'}
         self.sr.output([ms1pin, mode[ms][0]], [ms2pin, mode[ms][1]], [ms3pin, mode[ms][2]])
 
-        # setting up GPIO outputs for direction and step 
+        # setting up GPIO outputs for direction and step
         GPIO.setup(self.directionpin, GPIO.OUT)
         GPIO.setup(self.steppin, GPIO.OUT)
 
@@ -171,7 +171,7 @@ class Servo:
         self.pwm = GPIO.PWM(pin, 50)
         self.on = on
         self.off = off
-        self.pwmfactor = (on-off)/100
+        self.pwmfactor = (on - off) / 100
         self.pwm.start(off)
         self.state = 0
         self.set(1)
@@ -181,11 +181,11 @@ class Servo:
             return True
         if status:
             for i in range(100):
-                self.pwm.start(i*self.pwmfactor+self.off)
+                self.pwm.start(i * self.pwmfactor + self.off)
                 sleep(0.01)
         else:
             for i in range(100):
-                self.pwm.start(i*self.pwmfactor*-1+self.on)
+                self.pwm.start(i * self.pwmfactor * -1 + self.on)
                 sleep(0.01)
         self.state = status
 
@@ -196,12 +196,14 @@ class Plotter:
     ms = 16  # (1, 2, 4, 8, 16)
     calibrated = False
     right_engine, left_engine = None, None
-    _power, _debug, _preview = False, False, False
-    beginpoint, controlpoint = None, None
+    _power, _debug = False, False
+    startpoint, controlpoint = None, None
     _execpause, _execstop = False, False
     calibrationpoint = None
 
     def __init__(self, power=True, debug=False):
+        if GPIO.isfake:
+            print("Not RPi device, using fake GPIO...")
         GPIO.setmode(GPIO.BOARD)
         GPIO.setwarnings(False)
         self.setdebug(debug)
@@ -229,40 +231,42 @@ class Plotter:
         # SVG Path Data and plotter specific commands
         # http://www.w3.org/TR/SVGTiny12/paths.html
         self.commands = {  # commandname: (action, argument_count)
-            # SVG Path Data
-            'M': (self.moveto, 2),
-            'm': (self.moveto_rel, 2),
-            'L': (self.lineto, 2),
-            'l': (self.lineto_rel, 2),
-            'V': (self.vertical, 1),
-            'v': (self.vertical_rel, 1),
-            'H': (self.horizontal, 1),
-            'h': (self.horizontal_rel, 1),
-            'Z': (self.closepath, 0),
-            'z': (self.closepath, 0),
-            'C': (self.curveto, 6),
-            'c': (self.curveto_rel, 6),
-            'S': (self.scurveto, 4),
-            's': (self.scurveto_rel, 4),
-            'Q': (self.qcurveto, 4),
-            'q': (self.qcurveto_rel, 4),
-            'T': (self.sqcurveto, 2),
-            't': (self.sqcurveto_rel, 2),
-            # TODO: elliptical arc command
+                           # SVG Path Data
+                           'M': (self.moveto, 2),
+                           'm': (self.moveto_rel, 2),
+                           'L': (self.lineto, 2),
+                           'l': (self.lineto_rel, 2),
+                           'V': (self.vertical, 1),
+                           'v': (self.vertical_rel, 1),
+                           'H': (self.horizontal, 1),
+                           'h': (self.horizontal_rel, 1),
+                           'Z': (self.closepath, 0),
+                           'z': (self.closepath, 0),
+                           'C': (self.curveto, 6),
+                           'c': (self.curveto_rel, 6),
+                           'S': (self.scurveto, 4),
+                           's': (self.scurveto_rel, 4),
+                           'Q': (self.qcurveto, 4),
+                           'q': (self.qcurveto_rel, 4),
+                           'T': (self.sqcurveto, 2),
+                           't': (self.sqcurveto_rel, 2),
+                           # TODO: elliptical arc command
 
-            # Plotter
-            'SLP': (sleep, 1),
-            'SEP': (self.setseparator, 1),
-            'CAL': (self.calibrate, 2),
-            'COR': (self.getcoord, 0),
-            'LEN': (self.getlength, 0),
-            'PWR': (self.setpower, 1),
-            'DBG': (self.setdebug, 1),  # prints info in terminal
-            'PRV': (self.setpreview, 1)
-            # 'E': self.poweroff
+                           # Plotter
+                           'SLP': (sleep, 1),
+                           'SEP': (self.setseparator, 1),
+                           'CAL': (self.calibrate, 2),
+                           'COR': (self.getcoord, 0),
+                           'LEN': (self.getlength, 0),
+                           'PWR': (self.setpower, 1),
+                           'DBG': (self.setdebug, 1)  # prints info in terminal
+                           # 'E': self.poweroff
         }
 
-    def moveboth(self, left, right, speed):
+    def savestartpoint(self):
+        self.startpoint = self.getcoord()
+
+    def move(self, left, right, speed):
         gleft = int(left)
         gright = int(right)
         if gleft == 0 or gright == 0:
@@ -295,40 +299,34 @@ class Plotter:
     def moveto(self, x, y, speed=1, sep=True, savepoint=True):
         if not self.calibrated:
             raise NotCalibratedError()
-        if not self.beginpoint:
-            currentpos = ltc(length, self.m1, self.m2)
-            self.beginpoint = currentpos
         x += self.calibrationpoint[0]
         y += self.calibrationpoint[1]
+        if not self.startpoint:
+            self.savestartpoint()
         self.setseparator(sep)
-        destination = ctl([int(x), int(y)], self.m1, self.m2)
+        change = (int(int(x) - length[0]), int(int(y) - length[1]))
         if self.getdebug():
-            print("Destination: " + str(destination))
-        change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
-        if self.getdebug():
-            print("Change: " + str(change))
-        self.moveboth(change[0], change[1], speed)
+            print("Strings change: " + str(change))
+        self.move(change[0], change[1], speed)
         if savepoint:
-            currentpos = ltc(length, self.m1, self.m2)
-            self.beginpoint = currentpos
+            self.savestartpoint()
 
     def moveto_rel(self, x, y, speed=1, sep=True, savepoint=True):
         if not self.calibrated:
             raise NotCalibratedError()
         self.setseparator(sep)
-        currentpos = ltc(length, self.m1, self.m2)
-        if not self.beginpoint:
-            self.beginpoint = currentpos
-        destination = ctl([currentpos[0] + int(x), currentpos[1] + int(y)], self.m1, self.m2)
+        currentpos = self.getcoord()
+        if not self.startpoint:
+            self.startpoint = currentpos
+        destination = (currentpos[0] + int(x), currentpos[1] + int(y))
         if self.getdebug():
             print("Destination: " + str(destination))
         change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
         if self.getdebug():
-            print("Change: " + str(change))
-        self.moveboth(change[0], change[1], speed)
+            print("Strings change: " + str(change))
+        self.move(change[0], change[1], speed)
         if savepoint:
-            currentpos = ltc(length, self.m1, self.m2)
-            self.beginpoint = currentpos
+            self.savestartpoint()
 
     def lineto(self, x, y, speed=1):
         self.moveto(x, y, speed, False, False)
@@ -337,31 +335,31 @@ class Plotter:
         self.moveto_rel(x, y, speed, False, False)
 
     def vertical(self, y, speed=1):
-        self.moveto(length[0], y, speed, False, False)
+        self.moveto(int(self.getcoord()[0]), y, speed, False, False)
 
     def vertical_rel(self, y, speed=1):
         self.moveto_rel(0, y, speed, False, False)
 
     def horizontal(self, x, speed=1):
-        self.moveto(x, length[1], speed, False, False)
+        self.moveto(x, int(self.getcoord()[1]), speed, False, False)
 
     def horizontal_rel(self, x, speed=1):
         self.moveto_rel(x, 0, speed, False, False)
 
     def closepath(self, speed=1):
-        self.moveto(self.beginpoint[0], self.beginpoint[1], speed, True, False)
+        self.moveto(self.startpoint[0], self.startpoint[1], speed, False, False)
 
     def curveto(self, x1, y1, x2, y2, x, y, res=100):
-        start = ltc(length, self.m1, self.m2)
+        start = self.getcoord()
         for t in range(0, res):
-            bx = cubicbezier(t / res, start[0], x1, x2, x) / 25
-            by = cubicbezier(t / res, start[1], y1, y2, y) / 25
+            bx = cubicbezier(t / res, start[0], x1, x2, x)
+            by = cubicbezier(t / res, start[1], y1, y2, y)
             self.lineto(bx, by)
 
     def curveto_rel(self, x1, y1, x2, y2, x, y, res=100):
         for t in range(0, res):
-            bx = cubicbezier(t / res, 0, x1, x2, x) / 25
-            by = cubicbezier(t / res, 0, y1, y2, y) / 25
+            bx = cubicbezier(t / res, 0, x1, x2, x)
+            by = cubicbezier(t / res, 0, y1, y2, y)
             self.lineto_rel(bx, by)
 
     def scurveto(self, x2, y2, x, y, res=100):
@@ -371,16 +369,16 @@ class Plotter:
         raise NotImplementedError()
 
     def qcurveto(self, x1, y1, x, y, res=100):
-        start = ltc(length, self.m1, self.m2)
+        start = self.getcoord()
         for t in range(0, res):
-            bx = quadbezier(t / res, start[0], x1, x) / 25
-            by = quadbezier(t / res, start[1], y1, y) / 25
+            bx = quadbezier(t / res, start[0], x1, x)
+            by = quadbezier(t / res, start[1], y1, y)
             self.lineto(bx, by)
 
     def qcurveto_rel(self, x1, y1, x, y, res=100):
         for t in range(0, res):
-            bx = quadbezier(t / res, 0, x1, x) / 25
-            by = quadbezier(t / res, 0, y1, y) / 25
+            bx = quadbezier(t / res, 0, x1, x)
+            by = quadbezier(t / res, 0, y1, y)
             self.lineto_rel(bx, by)
 
     def sqcurveto(self, x, y, res=100):
@@ -447,21 +445,6 @@ class Plotter:
             state = "enabled"
         print("Debug mode " + state)
 
-    def getpreview(self):
-        return self._preview
-
-    def setpreview(self, value):
-        value = bool(int(value))
-        if self._preview == value:
-            return
-        self._preview = value
-
-        state = "disabled"
-        if self.getdebug():
-            if self.getpreview():
-                state = "enabled"
-            print("Preview " + state)
-
     def getexecpause(self):
         return self._execpause
 
@@ -481,14 +464,20 @@ class Plotter:
         self._execstop = True
 
     def execute(self, command):
-        if not re.match(r'^\s*[A-Za-z]', command):
+        """:type command: str"""
+        command = command.strip()
+        if len(command) == 0:
+            return
+
+        if not command[0].isalpha():
             if len(command) < 15:
                 formatlen = len(command)
             else:
                 formatlen = 15
+            raise CommandError(command[0:formatlen] + " - incorrect format!")
 
-        # cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?\d*\.?\d+(?:\s|,)*)*)', command)
-        cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?(\d((E|e)(\+|\-)\d+)?)*\.?(\d((E|e)(\+|\-)\d+)?)+(?:\s|,)*)*)', command)
+        cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?(\d((E|e)(\+|\-)\d+)?)*\.?(\d((E|e)(\+|\-)\d+)?)+(?:\s|,)*)*)',
+                             command)
 
         if not cmdlist:
             raise CommandError(command + " - syntax error!")
@@ -515,7 +504,7 @@ class Plotter:
                 raise CommandError(c_str + " - incorrect number of parameters!")
             if cmdargs_len > 0:
                 cmdargs = [int(float(x)) for x in cmdargs]
-                cmdargs = [cmdargs[i:i+action_argc] for i in range(0, cmdargs_len, action_argc)]
+                cmdargs = [cmdargs[i:i + action_argc] for i in range(0, cmdargs_len, action_argc)]
                 for x in cmdargs:
                     yield action(*x)
             else:
