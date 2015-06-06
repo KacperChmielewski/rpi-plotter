@@ -199,6 +199,7 @@ class Plotter:
     _power, _debug, _preview = False, False, False
     beginpoint, controlpoint = None, None
     _execpause, _execstop = False, False
+    calibrationpoint = None
 
     def __init__(self, power=True, debug=False):
         GPIO.setmode(GPIO.BOARD)
@@ -297,6 +298,8 @@ class Plotter:
         if not self.beginpoint:
             currentpos = ltc(length, self.m1, self.m2)
             self.beginpoint = currentpos
+        x += self.calibrationpoint[0]
+        y += self.calibrationpoint[1]
         self.setseparator(sep)
         destination = ctl([int(x), int(y)], self.m1, self.m2)
         if self.getdebug():
@@ -351,14 +354,14 @@ class Plotter:
     def curveto(self, x1, y1, x2, y2, x, y, res=100):
         start = ltc(length, self.m1, self.m2)
         for t in range(0, res):
-            bx = cubicbezier(t / res, start[0], x1, x2, x)
-            by = cubicbezier(t / res, start[1], y1, y2, y)
+            bx = cubicbezier(t / res, start[0], x1, x2, x) / 25
+            by = cubicbezier(t / res, start[1], y1, y2, y) / 25
             self.lineto(bx, by)
 
     def curveto_rel(self, x1, y1, x2, y2, x, y, res=100):
         for t in range(0, res):
-            bx = cubicbezier(t / res, 0, x1, x2, x)
-            by = cubicbezier(t / res, 0, y1, y2, y)
+            bx = cubicbezier(t / res, 0, x1, x2, x) / 25
+            by = cubicbezier(t / res, 0, y1, y2, y) / 25
             self.lineto_rel(bx, by)
 
     def scurveto(self, x2, y2, x, y, res=100):
@@ -370,14 +373,14 @@ class Plotter:
     def qcurveto(self, x1, y1, x, y, res=100):
         start = ltc(length, self.m1, self.m2)
         for t in range(0, res):
-            bx = quadbezier(t / res, start[0], x1, x)
-            by = quadbezier(t / res, start[1], y1, y)
+            bx = quadbezier(t / res, start[0], x1, x) / 25
+            by = quadbezier(t / res, start[1], y1, y) / 25
             self.lineto(bx, by)
 
     def qcurveto_rel(self, x1, y1, x, y, res=100):
         for t in range(0, res):
-            bx = quadbezier(t / res, 0, x1, x)
-            by = quadbezier(t / res, 0, y1, y)
+            bx = quadbezier(t / res, 0, x1, x) / 25
+            by = quadbezier(t / res, 0, y1, y) / 25
             self.lineto_rel(bx, by)
 
     def sqcurveto(self, x, y, res=100):
@@ -393,6 +396,7 @@ class Plotter:
         global length
         length = ctl((int(x), int(y)), self.m1, self.m2)
         length = [int(length[0]), int(length[1])]
+        self.calibrationpoint = (x, y)
         self.calibrated = True
 
     def getcoord(self):
