@@ -303,6 +303,8 @@ class Plotter:
         y += self.calibrationpoint[1]
         if not self.startpoint:
             self.savestartpoint()
+        if self.controlpoint:
+            self.controlpoint = None
         self.setseparator(sep)
         change = (int(int(x) - length[0]), int(int(y) - length[1]))
         if self.getdebug():
@@ -318,6 +320,8 @@ class Plotter:
         currentpos = self.getcoord()
         if not self.startpoint:
             self.startpoint = currentpos
+        if self.controlpoint:
+            self.controlpoint = None
         destination = (currentpos[0] + int(x), currentpos[1] + int(y))
         if self.getdebug():
             print("Destination: " + str(destination))
@@ -351,41 +355,53 @@ class Plotter:
 
     def curveto(self, x1, y1, x2, y2, x, y, res=100):
         start = self.getcoord()
-        for t in range(0, res):
-            bx = cubicbezier(t / res, start[0], x1, x2, x)
-            by = cubicbezier(t / res, start[1], y1, y2, y)
+        for t in range(1, res + 1):
+            bx = int(cubicbezier(t / res, start[0], x1, x2, x))
+            by = int(cubicbezier(t / res, start[1], y1, y2, y))
             self.lineto(bx, by)
+            self.controlpoint = (x2, y2)
 
     def curveto_rel(self, x1, y1, x2, y2, x, y, res=100):
-        for t in range(0, res):
-            bx = cubicbezier(t / res, 0, x1, x2, x)
-            by = cubicbezier(t / res, 0, y1, y2, y)
-            self.lineto_rel(bx, by)
+        start = self.getcoord()
+        for t in range(1, res + 1):
+            bx = int(cubicbezier(t / res, 0, x1, x2, x))
+            by = int(cubicbezier(t / res, 0, y1, y2, y))
+            bx += start[0]
+            by += start[1]
+            self.lineto(bx, by)
+            self.controlpoint = (x2 + start[0], y2 + start[1])
 
     def scurveto(self, x2, y2, x, y, res=100):
-        raise NotImplementedError()
+        self.curveto(self.controlpoint[0], self.controlpoint[1], x2, y2, x, y, res)
 
     def scurveto_rel(self, x2, y2, x, y, res=100):
-        raise NotImplementedError()
+        start = self.getcoord()
+        sx = start[0]
+        sy = start[1]
+        self.curveto(self.controlpoint[0], self.controlpoint[1], x2 + sx, y2 + sy, x + sx, y + sy, res)
 
     def qcurveto(self, x1, y1, x, y, res=100):
         start = self.getcoord()
-        for t in range(0, res):
-            bx = quadbezier(t / res, start[0], x1, x)
-            by = quadbezier(t / res, start[1], y1, y)
+        for t in range(1, res + 1):
+            bx = int(quadbezier(t / res, start[0], x1, x))
+            by = int(quadbezier(t / res, start[1], y1, y))
             self.lineto(bx, by)
 
     def qcurveto_rel(self, x1, y1, x, y, res=100):
-        for t in range(0, res):
-            bx = quadbezier(t / res, 0, x1, x)
-            by = quadbezier(t / res, 0, y1, y)
-            self.lineto_rel(bx, by)
+        start = self.getcoord()
+        for t in range(1, res + 1):
+            bx = int(quadbezier(t / res, 0, x1, x))
+            by = int(quadbezier(t / res, 0, y1, y))
+            bx += start[0]
+            by += start[1]
+            self.lineto(bx, by)
 
     def sqcurveto(self, x, y, res=100):
-        raise NotImplementedError()
+        self.qcurveto(self.controlpoint[0], self.controlpoint[1], x, y, res)
 
     def sqcurveto_rel(self, x, y, res=100):
-        raise NotImplementedError()
+        start = self.getcoord()
+        self.curveto(self.controlpoint[0], self.controlpoint[1], x + start[0], y + start[1], res)
 
     def setseparator(self, state):
         self.separator.set(int(state))
