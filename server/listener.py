@@ -17,7 +17,7 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
             print("{}:{} connected!".format(self.client_address[0], self.client_address[1]))
             socket = self.request
             while True:
-                data = socket.recv(1536)
+                data = socket.recv(8192)
                 if data == b'\x01':
                     continue
                 if not data:

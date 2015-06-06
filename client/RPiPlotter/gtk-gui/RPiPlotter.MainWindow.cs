@@ -5,29 +5,53 @@ namespace RPiPlotter
 	public partial class MainWindow
 	{
 		private global::Gtk.UIManager UIManager;
+		
 		private global::Gtk.Action PlotterAction;
+		
 		private global::Gtk.Action ViewAction;
+		
 		private global::Gtk.Action HelpAction;
+		
 		private global::Gtk.Action connectAction;
+		
 		private global::Gtk.Action disconnectAction;
+		
 		private global::Gtk.Action quitAction;
+		
 		private global::Gtk.RadioAction CommandModeAction;
+		
 		private global::Gtk.RadioAction ControlModeAction;
+		
 		private global::Gtk.RadioAction SVGModeAction;
+		
 		private global::Gtk.Action aboutAction;
+		
 		private global::Gtk.Action CommandReferenceAction;
+		
 		private global::Gtk.ToggleAction PreviewAction;
+		
 		private global::Gtk.ToggleAction PauseExecutionAction;
+		
 		private global::Gtk.VBox mainvbox;
+		
 		private global::Gtk.MenuBar menubar;
+		
 		private global::Gtk.Alignment contentAlignment;
+		
 		private global::Gtk.VBox contentvbox;
+		
 		private global::Gtk.ScrolledWindow GtkScrolledWindow;
+		
 		private global::Gtk.TreeView commandTreeView;
+		
 		private global::Gtk.HBox commandhbox;
+		
 		private global::Gtk.Label label1;
+		
 		private global::Gtk.Entry commandEntry;
+		
 		private global::Gtk.Button sendcommandButton;
+		
 		private global::Gtk.Button panicButton;
 
 		protected virtual void Build ()
@@ -65,7 +89,7 @@ namespace RPiPlotter
 			this.ControlModeAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("Control mode");
 			w1.Add (this.ControlModeAction, null);
 			this.SVGModeAction = new global::Gtk.RadioAction ("SVGModeAction", global::Mono.Unix.Catalog.GetString ("SVG mode"), null, null, 0);
-			this.SVGModeAction.Group = this.ControlModeAction.Group;
+			this.SVGModeAction.Group = this.CommandModeAction.Group;
 			this.SVGModeAction.Sensitive = false;
 			this.SVGModeAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("SVG mode");
 			this.SVGModeAction.Visible = false;
