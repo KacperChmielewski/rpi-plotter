@@ -203,8 +203,8 @@ class Plotter:
     calibrationpoint = None
 
     def __init__(self, power=True, debug=False):
-        if GPIO.isfake:
-            print("Not RPi device, using fake GPIO...")
+        # if GPIO.isfake:
+        #    print("Not RPi device, using fake GPIO...")
         GPIO.setmode(GPIO.BOARD)
         GPIO.setwarnings(False)
         self.setdebug(debug)
