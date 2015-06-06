@@ -321,7 +321,7 @@ class Plotter:
         if not self.calibrated:
             raise NotCalibratedError()
         self.setseparator(sep)
-        currentpos = self.getcoord()
+        currentpos = self.getcoord(False)
         if not self.startpoint:
             self.startpoint = currentpos
         if self.controlpoint:
@@ -423,9 +423,13 @@ class Plotter:
         self.calibrationpoint = (x, y)
         self.calibrated = True
 
-    def getcoord(self):
+    def getcoord(self, offset=True):
         if self.calibrated:
-            return ltc(length, self.m1, self.m2)
+            x, y = ltc(length, self.m1, self.m2)
+            if offset:
+                return x - self.calibrationpoint[0], y - self.calibrationpoint[1]
+            else:
+                return x, y
         else:
             raise NotCalibratedError()
 
