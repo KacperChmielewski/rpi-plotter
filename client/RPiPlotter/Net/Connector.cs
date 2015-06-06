@@ -81,7 +81,7 @@ namespace RPiPlotter
                     var stream = client.GetStream();
                     while (IsConnected)
                     {
-                        var readBuffer = new byte[2048];
+                        var readBuffer = new byte[10000];
                         int bytesCount = 0;
                         try
                         {
