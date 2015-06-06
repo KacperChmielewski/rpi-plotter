@@ -1,6 +1,7 @@
 from mathextra import *
-from time import sleep
+from time import sleep, time
 import re
+from threading import Thread
 
 try:
     import RPi.GPIO as GPIO
@@ -262,11 +263,12 @@ class Plotter:
                            'DBG': (self.setdebug, 1)  # prints info in terminal
                            # 'E': self.poweroff
         }
-
-    def savestartpoint(self):
-        self.startpoint = self.getcoord()
+        self.poweroffthread = self.PowerOffThread(15, self.getpower, self.setpower)
+        self.poweroffthread.start()
 
     def move(self, left, right, speed):
+        if not self.getpower():
+            self.setpower(True)
         gleft = int(left)
         gright = int(right)
         if gleft == 0 or gright == 0:
@@ -302,7 +304,7 @@ class Plotter:
         x += self.calibrationpoint[0]
         y += self.calibrationpoint[1]
         if not self.startpoint:
-            self.savestartpoint()
+            self._savestartpoint()
         if self.controlpoint:
             self.controlpoint = None
         self.setseparator(sep)
@@ -311,7 +313,7 @@ class Plotter:
             print("Strings change: " + str(change))
         self.move(change[0], change[1], speed)
         if savepoint:
-            self.savestartpoint()
+            self._savestartpoint()
 
     def moveto_rel(self, x, y, speed=1, sep=True, savepoint=True):
         if not self.calibrated:
@@ -330,7 +332,7 @@ class Plotter:
             print("Strings change: " + str(change))
         self.move(change[0], change[1], speed)
         if savepoint:
-            self.savestartpoint()
+            self._savestartpoint()
 
     def lineto(self, x, y, speed=1):
         self.moveto(x, y, speed, False, False)
@@ -372,13 +374,15 @@ class Plotter:
             self.controlpoint = (x2 + start[0], y2 + start[1])
 
     def scurveto(self, x2, y2, x, y, res=100):
-        self.curveto(self.controlpoint[0], self.controlpoint[1], x2, y2, x, y, res)
+        x1, y1 = self._getconpointreflection()
+        self.curveto(x1, y1, x2, y2, x, y, res)
 
     def scurveto_rel(self, x2, y2, x, y, res=100):
         start = self.getcoord()
         sx = start[0]
         sy = start[1]
-        self.curveto(self.controlpoint[0], self.controlpoint[1], x2 + sx, y2 + sy, x + sx, y + sy, res)
+        x1, y1 = self._getconpointreflection()
+        self.curveto(x1, y1, x2 + sx, y2 + sy, x + sx, y + sy, res)
 
     def qcurveto(self, x1, y1, x, y, res=100):
         start = self.getcoord()
@@ -386,6 +390,7 @@ class Plotter:
             bx = int(quadbezier(t / res, start[0], x1, x))
             by = int(quadbezier(t / res, start[1], y1, y))
             self.lineto(bx, by)
+            self.controlpoint = (x1 + start[0], y1 + start[1])
 
     def qcurveto_rel(self, x1, y1, x, y, res=100):
         start = self.getcoord()
@@ -395,13 +400,16 @@ class Plotter:
             bx += start[0]
             by += start[1]
             self.lineto(bx, by)
+            self.controlpoint = (x1 + start[0], y1 + start[1])
 
     def sqcurveto(self, x, y, res=100):
-        self.qcurveto(self.controlpoint[0], self.controlpoint[1], x, y, res)
+        x1, y1 = self._getconpointreflection()
+        self.qcurveto(x1, y1, x, y, res)
 
     def sqcurveto_rel(self, x, y, res=100):
         start = self.getcoord()
-        self.curveto(self.controlpoint[0], self.controlpoint[1], x + start[0], y + start[1], res)
+        x1, y1 = self._getconpointreflection()
+        self.qcurveto(x1, y1, x + start[0], y + start[1], res)
 
     def setseparator(self, state):
         self.separator.set(int(state))
@@ -479,6 +487,15 @@ class Plotter:
     def stopexecute(self):
         self._execstop = True
 
+    def _savestartpoint(self):
+        self.startpoint = self.getcoord()
+
+    def _getconpointreflection(self):
+        current = self.getcoord()
+        x = current[0] + (current[0] - self.controlpoint[0])
+        y = current[1] + (current[1] - self.controlpoint[1])
+        return x, y
+
     def execute(self, command):
         """:type command: str"""
         command = command.strip()
@@ -518,6 +535,8 @@ class Plotter:
             elif (action_argc > 0 and (cmdargs_len == 0 or cmdargs_len % action_argc != 0)) \
                     or (action_argc == 1 and cmdargs_len > 1):
                 raise CommandError(c_str + " - incorrect number of parameters!")
+
+            self.poweroffthread.stop()
             if cmdargs_len > 0:
                 cmdargs = [int(float(x)) for x in cmdargs]
                 cmdargs = [cmdargs[i:i + action_argc] for i in range(0, cmdargs_len, action_argc)]
@@ -525,3 +544,31 @@ class Plotter:
                     yield action(*x)
             else:
                 yield action()
+            self.poweroffthread.restart()
+
+    class PowerOffThread(Thread):
+        _cancelled = False
+        _powerofftime = None
+
+        def __init__(self, interval, getpower, setpower):
+            Thread.__init__(self)
+            self.interval = interval
+            self.getpower = getpower
+            self.setpower = setpower
+            self.setDaemon(True)
+
+        def stop(self):
+            self._cancelled = True
+
+        def restart(self):
+            self._cancelled = False
+
+        def run(self):
+            self._powerofftime = time() + self.interval
+            while True:
+                while self._cancelled or not self.getpower():
+                    sleep(1)
+                    self._powerofftime = time() + self.interval
+                if time() > self._powerofftime:
+                    self.setpower(False)
+                sleep(1)
