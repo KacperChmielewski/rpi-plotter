@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RPiPlotter
+namespace RPiPlotter.Net
 {
     public class CommandDoneEventArgs : CommandEventArgs
     {

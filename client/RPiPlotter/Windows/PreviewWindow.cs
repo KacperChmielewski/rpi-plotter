@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
-namespace RPiPlotter
+namespace RPiPlotter.Windows
 {
     public partial class PreviewWindow : Gtk.Window
     {

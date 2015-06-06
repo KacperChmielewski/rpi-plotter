@@ -20,7 +20,7 @@
       </source>
     </icon-set>
   </icon-factory>
-  <widget class="Gtk.Window" id="RPiPlotter.MainWindow" design-size="448 299">
+  <widget class="Gtk.Window" id="RPiPlotter.Windows.MainWindow" design-size="478 299">
     <action-group name="Default">
       <action id="PlotterAction">
         <property name="Type">Action</property>
@@ -67,7 +67,7 @@
         <property name="DrawAsRadio">False</property>
         <property name="Active">True</property>
         <property name="Value">0</property>
-        <property name="Group">viewmode</property>
+        <property name="Group">units</property>
       </action>
       <action id="ControlModeAction">
         <property name="Type">Radio</property>
@@ -77,7 +77,7 @@
         <property name="DrawAsRadio">False</property>
         <property name="Active">False</property>
         <property name="Value">0</property>
-        <property name="Group">viewmode</property>
+        <property name="Group">units</property>
       </action>
       <action id="SVGModeAction">
         <property name="Type">Radio</property>
@@ -88,7 +88,7 @@
         <property name="DrawAsRadio">False</property>
         <property name="Active">False</property>
         <property name="Value">0</property>
-        <property name="Group">viewmode</property>
+        <property name="Group">units</property>
       </action>
       <action id="aboutAction">
         <property name="Type">Action</property>
@@ -117,6 +117,74 @@
         <property name="Active">False</property>
         <signal name="Toggled" handler="OnPauseExecutionActionToggled" />
       </action>
+      <action id="ExecutionAction">
+        <property name="Type">Action</property>
+        <property name="Label" translatable="yes">Execution</property>
+        <property name="ShortLabel" translatable="yes">Execution</property>
+      </action>
+      <action id="PauseExecutionAction1">
+        <property name="Type">Toggle</property>
+        <property name="Label" translatable="yes">Pause execution</property>
+        <property name="ShortLabel" translatable="yes">Pause execution</property>
+        <property name="DrawAsRadio">False</property>
+        <property name="Active">False</property>
+        <signal name="Toggled" handler="OnPauseExecutionActionToggled" />
+      </action>
+      <action id="CommandUnitAction">
+        <property name="Type">Action</property>
+        <property name="Label" translatable="yes">Command unit</property>
+        <property name="ShortLabel" translatable="yes">Command unit</property>
+      </action>
+      <action id="stepsAction">
+        <property name="Type">Radio</property>
+        <property name="Label" translatable="yes">steps</property>
+        <property name="ShortLabel" translatable="yes">Engine steps</property>
+        <property name="DrawAsRadio">False</property>
+        <property name="Active">True</property>
+        <property name="Value">0</property>
+        <property name="Group">units</property>
+        <signal name="Activated" handler="OnEngineStepsActionActivated" />
+      </action>
+      <action id="ptAction">
+        <property name="Type">Radio</property>
+        <property name="Label" translatable="yes">pt</property>
+        <property name="ShortLabel" translatable="yes">pt</property>
+        <property name="DrawAsRadio">False</property>
+        <property name="Active">False</property>
+        <property name="Value">1</property>
+        <property name="Group">units</property>
+        <signal name="Activated" handler="OnPtActionActivated" />
+      </action>
+      <action id="cmAction">
+        <property name="Type">Radio</property>
+        <property name="Label" translatable="yes">cm</property>
+        <property name="ShortLabel" translatable="yes">cm</property>
+        <property name="DrawAsRadio">False</property>
+        <property name="Active">False</property>
+        <property name="Value">2</property>
+        <property name="Group">units</property>
+        <signal name="Activated" handler="OnCmActionActivated" />
+      </action>
+      <action id="inAction">
+        <property name="Type">Radio</property>
+        <property name="Label" translatable="yes">in</property>
+        <property name="ShortLabel" translatable="yes">in</property>
+        <property name="DrawAsRadio">False</property>
+        <property name="Active">False</property>
+        <property name="Value">3</property>
+        <property name="Group">units</property>
+        <signal name="Activated" handler="OnInActionActivated" />
+      </action>
+      <action id="mmAction">
+        <property name="Type">Radio</property>
+        <property name="Label" translatable="yes">mm</property>
+        <property name="ShortLabel" translatable="yes">mm</property>
+        <property name="DrawAsRadio">False</property>
+        <property name="Active">False</property>
+        <property name="Value">4</property>
+        <property name="Group">units</property>
+        <signal name="Activated" handler="OnMmActionActivated" />
+      </action>
     </action-group>
     <property name="MemberName" />
     <property name="Title" translatable="yes">RPi Plotter Controller</property>
@@ -125,7 +193,7 @@
     <child>
       <widget class="Gtk.VBox" id="mainvbox">
         <property name="MemberName" />
-        <property name="Spacing">6</property>
+        <property name="Spacing">0</property>
         <child>
           <widget class="Gtk.MenuBar" id="menubar">
             <property name="MemberName" />
@@ -134,9 +202,19 @@
                 <node type="Menuitem" action="connectAction" />
                 <node type="Menuitem" action="disconnectAction" />
                 <node type="Separator" />
-                <node type="Menuitem" action="PauseExecutionAction" />
-                <node type="Separator" />
                 <node type="Menuitem" action="quitAction" />
+              </node>
+              <node type="Menu" action="ExecutionAction">
+                <node type="Menuitem" action="PauseExecutionAction1" />
+                <node type="Separator" />
+                <node type="Menu" action="CommandUnitAction">
+                  <node type="Menuitem" action="stepsAction" />
+                  <node type="Separator" />
+                  <node type="Menuitem" action="ptAction" />
+                  <node type="Menuitem" action="cmAction" />
+                  <node type="Menuitem" action="inAction" />
+                  <node type="Menuitem" action="mmAction" />
+                </node>
               </node>
               <node type="Menu" action="ViewAction">
                 <node type="Menuitem" action="CommandModeAction" />
@@ -163,6 +241,7 @@
           <widget class="Gtk.Alignment" id="contentAlignment">
             <property name="MemberName" />
             <property name="LeftPadding">6</property>
+            <property name="TopPadding">6</property>
             <property name="RightPadding">6</property>
             <property name="BottomPadding">6</property>
             <child>
@@ -271,10 +350,59 @@
             <property name="AutoSize">True</property>
           </packing>
         </child>
+        <child>
+          <widget class="Gtk.Statusbar" id="statusbar1">
+            <property name="MemberName" />
+            <property name="Spacing">6</property>
+            <child>
+              <widget class="Gtk.Image" id="connectionStatusImage">
+                <property name="MemberName" />
+                <property name="Xpad">2</property>
+                <property name="Pixbuf">stock:gtk-disconnect Menu</property>
+              </widget>
+              <packing>
+                <property name="Position">0</property>
+                <property name="AutoSize">True</property>
+                <property name="Expand">False</property>
+                <property name="Fill">False</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="Gtk.Label" id="connectionStatusLabel">
+                <property name="MemberName" />
+                <property name="LabelProp" translatable="yes">Disconnected</property>
+              </widget>
+              <packing>
+                <property name="Position">1</property>
+                <property name="AutoSize">True</property>
+                <property name="Expand">False</property>
+                <property name="Fill">False</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="Gtk.Label" id="unitLabel">
+                <property name="MemberName" />
+                <property name="LabelProp" translatable="yes">Unit: steps</property>
+              </widget>
+              <packing>
+                <property name="Position">3</property>
+                <property name="AutoSize">True</property>
+                <property name="Expand">False</property>
+                <property name="Fill">False</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="Position">2</property>
+            <property name="AutoSize">True</property>
+            <property name="Expand">False</property>
+            <property name="Fill">False</property>
+          </packing>
+        </child>
       </widget>
     </child>
   </widget>
-  <widget class="Gtk.Dialog" id="RPiPlotter.ConnectDialog" design-size="455 91">
+  <widget class="Gtk.Dialog" id="RPiPlotter.Windows.ConnectDialog" design-size="455 91">
     <property name="MemberName" />
     <property name="Title" translatable="yes">Connect to plotter</property>
     <property name="TypeHint">Dialog</property>
@@ -440,7 +568,7 @@
       </widget>
     </child>
   </widget>
-  <widget class="Gtk.Window" id="RPiPlotter.PreviewWindow" design-size="400 300">
+  <widget class="Gtk.Window" id="RPiPlotter.Windows.PreviewWindow" design-size="400 300">
     <property name="MemberName" />
     <property name="Title" translatable="yes">PreviewWindow</property>
     <property name="WindowPosition">CenterOnParent</property>

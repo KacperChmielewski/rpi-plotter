@@ -6,7 +6,7 @@ import signal
 def signal_handler(*args):
     print('\nCtrl+C pressed, quitting...')
     if plotter:
-        plotter.setpower(False)
+        plotter.shutdown()
     sys.exit(0)
 
 

@@ -4,7 +4,7 @@ using System.Threading;
 using System.Text;
 using System.IO;
 
-namespace RPiPlotter
+namespace RPiPlotter.Net
 {
     public delegate void CommandEventHandler(object sender,CommandEventArgs e);
     public delegate void CommandDoneEventHandler(object sender,CommandDoneEventArgs e);

@@ -53,9 +53,12 @@ def serve():
 def signal_handler(*args):
     print('\nCtrl-C pressed, quitting...')
     if socket:
-        socket.shutdown(sock.SHUT_RDWR)
+        try:
+            socket.shutdown(sock.SHUT_RDWR)
+        except sock.error:
+            pass
     if plotter:
-        plotter.setpower(False)
+        plotter.shutdown()
     sys.exit(0)
 
 

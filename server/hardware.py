@@ -193,6 +193,7 @@ class Servo:
 
 
 class Plotter:
+    # 1 mm = 3200/79
     m1, m2 = [0, 0], [81013, 0]
     spr = 200  # steps per revolution in full step mode
     ms = 16  # (1, 2, 4, 8, 16)
@@ -201,7 +202,7 @@ class Plotter:
     _power, _debug = False, False
     startpoint, controlpoint = None, None
     _execpause, _execstop = False, False
-    calibrationpoint = None
+    calibrationpoint, offsetpoint = None, None
 
     def __init__(self, power=True, debug=False):
         GPIO.setmode(GPIO.BOARD)
@@ -259,8 +260,9 @@ class Plotter:
                            'COR': (self.getcoord, 0),
                            'LEN': (self.getlength, 0),
                            'PWR': (self.setpower, 1),
-                           'DBG': (self.setdebug, 1)  # prints info in terminal
-                           # 'E': self.poweroff
+                           'DBG': (self.setdebug, 1),  # prints info in terminal
+                           'OFF': (self.setoffset, 0),  # makes current point as (0, 0)
+                           'OFC': (self.clearoffset, 0),  # clears offset
         }
         self.poweroffthread = self.PowerOffThread(15, self.getpower, self.setpower)
         self.poweroffthread.start()
@@ -300,8 +302,7 @@ class Plotter:
     def moveto(self, x, y, speed=1, sep=True, savepoint=True):
         if not self.calibrated:
             raise NotCalibratedError()
-        x += self.calibrationpoint[0]
-        y += self.calibrationpoint[1]
+        x, y = self._getoffsetpoint(x, y)
         if not self.startpoint:
             self._savestartpoint()
         if self.controlpoint:
@@ -420,14 +421,14 @@ class Plotter:
         global length
         length = ctl((int(x), int(y)), self.m1, self.m2)
         length = [int(length[0]), int(length[1])]
-        self.calibrationpoint = (x, y)
+        self.calibrationpoint = ltc(length, self.m1, self.m2)
         self.calibrated = True
 
     def getcoord(self, offset=True):
         if self.calibrated:
             x, y = ltc(length, self.m1, self.m2)
-            if offset:
-                return x - self.calibrationpoint[0], y - self.calibrationpoint[1]
+            if offset and self.offsetpoint:
+                return self._getoffsetpoint(x, y)
             else:
                 return x, y
         else:
@@ -475,6 +476,14 @@ class Plotter:
             state = "enabled"
         print("Debug mode " + state)
 
+    def setoffset(self):
+        self.offsetpoint = self.getcoord(False)
+        pass
+
+    def clearoffset(self):
+        self.offsetpoint = None
+        pass
+
     def getexecpause(self):
         return self._execpause
 
@@ -501,6 +510,19 @@ class Plotter:
         x = current[0] + (current[0] - self.controlpoint[0])
         y = current[1] + (current[1] - self.controlpoint[1])
         return x, y
+
+    def _getoffsetpoint(self, x, y):
+        if self.offsetpoint:
+            return x - self.offsetpoint[0], y - self.offsetpoint[1]
+        else:
+            return x, y
+
+    def shutdown(self):
+        if self.calibrated:
+            if self.getdebug():
+                print("Returning to calibration point: " + str(self.calibrationpoint))
+            self.moveto(0, 0, speed=5)
+        self.setpower(False)
 
     def execute(self, command):
         """:type command: str"""
