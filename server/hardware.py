@@ -308,7 +308,10 @@ class Plotter:
         if self.controlpoint:
             self.controlpoint = None
         self.setseparator(sep)
-        change = (int(int(x) - length[0]), int(int(y) - length[1]))
+        destination = ctl([int(x), int(y)], self.m1, self.m2)
+        if self.getdebug():
+            print("Destination: " + str(destination))
+        change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
         if self.getdebug():
             print("Strings change: " + str(change))
         self.move(change[0], change[1], speed)
@@ -324,7 +327,7 @@ class Plotter:
             self.startpoint = currentpos
         if self.controlpoint:
             self.controlpoint = None
-        destination = (currentpos[0] + int(x), currentpos[1] + int(y))
+        destination = ctl([currentpos[0] + int(x), currentpos[1] + int(y)], self.m1, self.m2)
         if self.getdebug():
             print("Destination: " + str(destination))
         change = (int(destination[0] - length[0]), int(destination[1] - length[1]))
