@@ -537,7 +537,7 @@ class Plotter:
                 formatlen = 15
             raise CommandError(command[0:formatlen] + " - incorrect format!")
 
-        cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?(\d((E|e)(\+|\-)\d+)?)*\.?(?:\s|,)*)*)',
+        cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?(\d((E|e)(\+|\-)\d+)?)*\.?(\d((E|e)(\+|\-)\d+)?)+(?:\s|,)*)*)',
                              command)
 
         if not cmdlist:
