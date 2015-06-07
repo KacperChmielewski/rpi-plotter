@@ -4,11 +4,12 @@ using System.Threading;
 using System.Text;
 using System.IO;
 
-namespace RPiPlotter
+namespace RPiPlotter.Net
 {
     public delegate void CommandEventHandler(object sender,CommandEventArgs e);
     public delegate void CommandDoneEventHandler(object sender,CommandDoneEventArgs e);
     public delegate void DisconnectedEventHandler(object sender,DisconnectedEventArgs e);
+    public delegate void MessageReceivedEventHandler(object sender,MessageReceivedEventArgs e);
 
     public class Connector
     {
@@ -32,6 +33,7 @@ namespace RPiPlotter
         public event CommandEventHandler CommandExecuting;
         public event CommandEventHandler CommandFail;
         public event CommandDoneEventHandler CommandDone;
+        public event MessageReceivedEventHandler MessageReceived;
 
 
         TcpClient client;
@@ -133,8 +135,16 @@ namespace RPiPlotter
                             {
                                 if (CommandExecuting != null)
                                 {
-                                    CommandEventArgs commandArgs = new CommandEventArgs(msgParts[1]);
+                                    var commandArgs = new CommandEventArgs(msgParts[1]);
                                     Gtk.Application.Invoke((sender, e) => CommandExecuting(this, commandArgs));
+                                }
+                            }
+                            else if (msgParts[0] == "MSG")
+                            {
+                                if (MessageReceived != null)
+                                {
+                                    var commandArgs = new MessageReceivedEventArgs(msgParts[1]);
+                                    Gtk.Application.Invoke((sender, e) => MessageReceived(this, commandArgs));
                                 }
                             }
                         }

@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace RPiPlotter
+namespace RPiPlotter.Windows
 {
-    public partial class ConnectDialog : Gtk.Dialog
+    public sealed partial class ConnectDialog : Gtk.Dialog
     {
         public string Hostname { get; private set; }
 
@@ -22,14 +22,14 @@ namespace RPiPlotter
             Port = int.Parse(portEntry.Text);
         }
 
-        protected void OnPortEntryChanged(object sender, EventArgs e)
+        void OnPortEntryChanged(object sender, EventArgs e)
         {
             if (portEntry.Text.Length > 0 && !char.IsDigit(portEntry.Text[portEntry.Text.Length - 1]))
                 portEntry.Text = portEntry.Text.Remove(portEntry.Text.Length - 1);
 
         }
 
-        protected void OnEntryActivated(object sender, EventArgs e)
+        void OnEntryActivated(object sender, EventArgs e)
         {
             buttonOk.Click();
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using Gtk;
+using RPiPlotter.Windows;
 
 namespace RPiPlotter
 {
@@ -8,7 +9,7 @@ namespace RPiPlotter
         public static void Main(string[] args)
         {
             Application.Init();
-            MainWindow win = new MainWindow();
+            var win = new MainWindow();
             win.Show();
             GLib.ExceptionManager.UnhandledException += (e) =>
             {

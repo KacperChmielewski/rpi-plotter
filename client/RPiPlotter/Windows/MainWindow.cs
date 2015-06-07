@@ -1,14 +1,15 @@
 ﻿using System;
 using Gtk;
 using System.Text.RegularExpressions;
+using RPiPlotter.Net;
 
-namespace RPiPlotter
+namespace RPiPlotter.Windows
 {
-    public partial class MainWindow : Gtk.Window
+    public sealed partial class MainWindow : Gtk.Window
     {
         ListStore commandListStore;
         Connector connector;
-        Gdk.Pixbuf donePixbuf, errorPixbuf, executingPixbuf;
+        Gdk.Pixbuf donePixbuf, errorPixbuf, executingPixbuf, connectedPixbuf, disconnectedPixbuf;
         PreviewWindow previewWindow;
 
         public MainWindow()
@@ -18,7 +19,6 @@ namespace RPiPlotter
             previewWindow = new PreviewWindow();
             previewWindow.Hidden += (o, args) => PreviewAction.Active = false;
             previewWindow.Hide();
-            previewWindow.RefreshPreview();
             this.SetupCommandTreeView();
             this.LoadIcons();
         }
@@ -41,6 +41,8 @@ namespace RPiPlotter
             donePixbuf = iconTheme.LoadIcon("gtk-apply", 16, IconLookupFlags.NoSvg);
             errorPixbuf = new Gdk.Pixbuf("Icons/error.png");
             executingPixbuf = new Gdk.Pixbuf("Icons/execute.png");
+            connectedPixbuf = iconTheme.LoadIcon("gtk-connect", 16, IconLookupFlags.NoSvg);
+            disconnectedPixbuf = iconTheme.LoadIcon("gtk-disconnect", 16, IconLookupFlags.NoSvg);
         }
 
         void SendCommand()
@@ -63,6 +65,10 @@ namespace RPiPlotter
         {
             disconnectAction.Sensitive = false;
             contentvbox.Sensitive = false;
+            PauseExecutionAction.Sensitive = false;
+            ServerInfoAction.Sensitive = false;
+            connectStatusLabel.Text = "Disconnected";
+            connectStatusImage.Pixbuf = disconnectedPixbuf;
             commandListStore.Clear();
             previewWindow.ClearPaths();
         }
@@ -91,6 +97,7 @@ namespace RPiPlotter
                 connector.CommandDone += HandleCommandDone;
                 connector.CommandFail += HandleCommandFail;
                 connector.CommandExecuting += HandleCommandExecuting;
+                connector.MessageReceived += HandleMessageReceived;
                 try
                 {
                     connector.Connect();
@@ -116,6 +123,12 @@ namespace RPiPlotter
         {
             disconnectAction.Sensitive = true;
             contentvbox.Sensitive = true;
+            sendcommandButton.Sensitive = false;
+            connectStatusLabel.Text = "Connected to " + connector.Hostname;
+            connectStatusImage.Pixbuf = connectedPixbuf;
+            PauseExecutionAction.Sensitive = true;
+            ServerInfoAction.Sensitive = true;
+            GetStateInfoAction.Sensitive = true;
         }
 
         void OnConnectorConnectionError(object sender, UnhandledExceptionEventArgs e)
@@ -145,7 +158,7 @@ namespace RPiPlotter
             }
         }
 
-        protected void OnDisconnectActionActivated(object sender, EventArgs e)
+        void OnDisconnectActionActivated(object sender, EventArgs e)
         {
             connector.Disconnect();
         }
@@ -254,9 +267,24 @@ namespace RPiPlotter
             }
         }
 
+        void HandleMessageReceived(object sender, MessageReceivedEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(e.Message))
+            {
+                var dialog = new Gtk.MessageDialog(this,
+                                 Gtk.DialogFlags.DestroyWithParent, 
+                                 Gtk.MessageType.Info, 
+                                 Gtk.ButtonsType.Ok,
+                                 true,
+                                 e.Message);
+                dialog.Run();
+                dialog.Destroy();
+            }
+        }
+
         #endregion
 
-        protected void OnCommandTreeViewRowActivated(object o, RowActivatedArgs args)
+        void OnCommandTreeViewRowActivated(object o, RowActivatedArgs args)
         {
             TreeIter iter;
             commandListStore.GetIter(out iter, args.Path);
@@ -268,7 +296,7 @@ namespace RPiPlotter
         }
 
 
-        protected void OnPreviewActionToggled(object sender, EventArgs e)
+        void OnPreviewActionToggled(object sender, EventArgs e)
         {
             var action = sender as ToggleAction;
             if (action.Active)
@@ -281,7 +309,7 @@ namespace RPiPlotter
             }
         }
 
-        protected void OnCommandEntryChanged(object sender, EventArgs e)
+        void OnCommandEntryChanged(object sender, EventArgs e)
         {
             var text = commandEntry.Text;
             if (!string.IsNullOrWhiteSpace(text) && Regex.IsMatch(text, @"^\s*[A-Za-z].*"))
@@ -294,27 +322,33 @@ namespace RPiPlotter
             }
         }
 
-        protected void OnSendcommandButtonClicked(object sender, EventArgs e)
+        void OnSendcommandButtonClicked(object sender, EventArgs e)
         {
             SendCommand();
         }
 
-        protected void OnPanicButtonClicked(object sender, EventArgs e)
+        void OnPanicButtonClicked(object sender, EventArgs e)
         {
             connector.Send("!PANIC");
         }
 
-        protected void OnCommandEntryActivated(object sender, EventArgs e)
+        void OnCommandEntryActivated(object sender, EventArgs e)
         {
-            SendCommand();
+            if (sendcommandButton.Sensitive)
+                SendCommand();
         }
 
-        protected void OnPauseExecutionActionToggled(object sender, EventArgs e)
+        void OnPauseExecutionActionToggled(object sender, EventArgs e)
         {
             if (PauseExecutionAction.Active)
                 connector.Send("!PAUSE");
             else
                 connector.Send("!UNPAUSE");
+        }
+
+        void OnServerInfoActionActivated(object sender, EventArgs e)
+        {
+            connector.Send("!INFO");
         }
     }
 }

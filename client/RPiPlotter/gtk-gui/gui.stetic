@@ -20,11 +20,11 @@
       </source>
     </icon-set>
   </icon-factory>
-  <widget class="Gtk.Window" id="RPiPlotter.MainWindow" design-size="448 299">
+  <widget class="Gtk.Window" id="RPiPlotter.Windows.MainWindow" design-size="488 299">
     <action-group name="Default">
-      <action id="PlotterAction">
+      <action id="FileAction">
         <property name="Type">Action</property>
-        <property name="Label" translatable="yes">Plotter</property>
+        <property name="Label" translatable="yes">File</property>
         <property name="ShortLabel" translatable="yes">Plotter</property>
       </action>
       <action id="ViewAction">
@@ -109,13 +109,48 @@
         <property name="Active">False</property>
         <signal name="Toggled" handler="OnPreviewActionToggled" />
       </action>
+      <action id="PlotterAction">
+        <property name="Type">Action</property>
+        <property name="Label" translatable="yes">Plotter</property>
+        <property name="ShortLabel" translatable="yes">Plotter</property>
+      </action>
+      <action id="ServerInfoAction">
+        <property name="Type">Action</property>
+        <property name="Label" translatable="yes">Server information</property>
+        <property name="Sensitive">False</property>
+        <property name="ShortLabel" translatable="yes">Server info</property>
+        <property name="StockId">gtk-dialog-info</property>
+        <signal name="Activated" handler="OnServerInfoActionActivated" />
+      </action>
+      <action id="ServerLogAction">
+        <property name="Type">Action</property>
+        <property name="Label" translatable="yes">Server log</property>
+        <property name="ShortLabel" translatable="yes">Server log</property>
+      </action>
+      <action id="CalibrateAction">
+        <property name="Type">Action</property>
+        <property name="Label" translatable="yes">Calibrate</property>
+        <property name="ShortLabel" translatable="yes">Calibrate</property>
+      </action>
       <action id="PauseExecutionAction">
         <property name="Type">Toggle</property>
         <property name="Label" translatable="yes">Pause execution</property>
+        <property name="Sensitive">False</property>
         <property name="ShortLabel" translatable="yes">Pause execution</property>
         <property name="DrawAsRadio">False</property>
         <property name="Active">False</property>
         <signal name="Toggled" handler="OnPauseExecutionActionToggled" />
+      </action>
+      <action id="GetStateInfoAction">
+        <property name="Type">Action</property>
+        <property name="Label" translatable="yes">Get state info</property>
+        <property name="Sensitive">False</property>
+        <property name="ShortLabel" translatable="yes">Get coordinates</property>
+      </action>
+      <action id="GetStringsLengthAction">
+        <property name="Type">Action</property>
+        <property name="Label" translatable="yes">Get strings length</property>
+        <property name="ShortLabel" translatable="yes">Get strings length</property>
       </action>
     </action-group>
     <property name="MemberName" />
@@ -125,18 +160,22 @@
     <child>
       <widget class="Gtk.VBox" id="mainvbox">
         <property name="MemberName" />
-        <property name="Spacing">6</property>
         <child>
           <widget class="Gtk.MenuBar" id="menubar">
             <property name="MemberName" />
             <node name="menubar" type="Menubar">
-              <node type="Menu" action="PlotterAction">
+              <node type="Menu" action="FileAction">
                 <node type="Menuitem" action="connectAction" />
                 <node type="Menuitem" action="disconnectAction" />
                 <node type="Separator" />
-                <node type="Menuitem" action="PauseExecutionAction" />
+                <node type="Menuitem" action="ServerInfoAction" />
                 <node type="Separator" />
                 <node type="Menuitem" action="quitAction" />
+              </node>
+              <node type="Menu" action="PlotterAction">
+                <node type="Menuitem" action="PauseExecutionAction" />
+                <node type="Separator" />
+                <node type="Menuitem" action="GetStateInfoAction" />
               </node>
               <node type="Menu" action="ViewAction">
                 <node type="Menuitem" action="CommandModeAction" />
@@ -163,6 +202,7 @@
           <widget class="Gtk.Alignment" id="contentAlignment">
             <property name="MemberName" />
             <property name="LeftPadding">6</property>
+            <property name="TopPadding">6</property>
             <property name="RightPadding">6</property>
             <property name="BottomPadding">6</property>
             <child>
@@ -271,10 +311,66 @@
             <property name="AutoSize">True</property>
           </packing>
         </child>
+        <child>
+          <widget class="Gtk.Statusbar" id="statusbar2">
+            <property name="MemberName" />
+            <property name="Spacing">6</property>
+            <child>
+              <widget class="Gtk.Alignment" id="connectStatusAlignment">
+                <property name="MemberName" />
+                <property name="LeftPadding">5</property>
+                <property name="TopPadding">2</property>
+                <property name="BottomPadding">2</property>
+                <child>
+                  <widget class="Gtk.HBox" id="connectStatusHbox">
+                    <property name="MemberName" />
+                    <property name="Spacing">6</property>
+                    <child>
+                      <widget class="Gtk.Image" id="connectStatusImage">
+                        <property name="MemberName" />
+                        <property name="Pixbuf">stock:gtk-disconnect SmallToolbar</property>
+                      </widget>
+                      <packing>
+                        <property name="Position">0</property>
+                        <property name="AutoSize">True</property>
+                        <property name="Expand">False</property>
+                        <property name="Fill">False</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="Gtk.Label" id="connectStatusLabel">
+                        <property name="MemberName" />
+                        <property name="LabelProp" translatable="yes">Disconnected</property>
+                      </widget>
+                      <packing>
+                        <property name="Position">1</property>
+                        <property name="AutoSize">True</property>
+                        <property name="Expand">False</property>
+                        <property name="Fill">False</property>
+                      </packing>
+                    </child>
+                  </widget>
+                </child>
+              </widget>
+              <packing>
+                <property name="Position">0</property>
+                <property name="AutoSize">True</property>
+                <property name="Expand">False</property>
+                <property name="Fill">False</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="Position">2</property>
+            <property name="AutoSize">True</property>
+            <property name="Expand">False</property>
+            <property name="Fill">False</property>
+          </packing>
+        </child>
       </widget>
     </child>
   </widget>
-  <widget class="Gtk.Dialog" id="RPiPlotter.ConnectDialog" design-size="455 91">
+  <widget class="Gtk.Dialog" id="RPiPlotter.Windows.ConnectDialog" design-size="455 91">
     <property name="MemberName" />
     <property name="Title" translatable="yes">Connect to plotter</property>
     <property name="TypeHint">Dialog</property>
@@ -440,9 +536,9 @@
       </widget>
     </child>
   </widget>
-  <widget class="Gtk.Window" id="RPiPlotter.PreviewWindow" design-size="400 300">
+  <widget class="Gtk.Window" id="RPiPlotter.Windows.PreviewWindow" design-size="400 300">
     <property name="MemberName" />
-    <property name="Title" translatable="yes">PreviewWindow</property>
+    <property name="Title" translatable="yes">Preview</property>
     <property name="WindowPosition">CenterOnParent</property>
     <child>
       <widget class="Gtk.ScrolledWindow" id="GtkScrolledWindow">

@@ -1,14 +1,16 @@
 from queue import Queue
 import socketserver
 import socket as sock
+import datetime
 import threading
 import time
 import signal
 import sys
 from hardware import Plotter, CommandError, NotCalibratedError
 
-queue = Queue()
 server, socket = None, None
+queue = Queue()
+starttime = None
 
 class TCPPlotterListener(socketserver.BaseRequestHandler):
     def handle(self):
@@ -31,6 +33,8 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
                     plotter.setexecpause(True)
                 elif m == "!UNPAUSE":
                     plotter.setexecpause(False)
+                elif m == "!INFO":
+                    self.sendinfo()
                 else:
                     queue.put(m)
         except Exception as e:
@@ -39,6 +43,30 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
             queue.queue.clear()
             socket.close()
             print(self.client_address[0] + " disconnected!")
+
+    def sendinfo(self):
+        import platform
+        global starttime
+        info = "Platform: " + platform.platform()
+        uptime = datetime.datetime.now() - starttime
+        info += "\nUptime: " + str(uptime)
+        print(info)
+        try:
+            self.request.sendall(bytes("MSG|" + info + ';;', "utf-8"))
+        except OSError:
+            pass
+
+
+def signal_handler(*args):
+    print('\nCtrl-C pressed, quitting...')
+    if socket:
+        try:
+            socket.shutdown(sock.SHUT_RDWR)
+        except sock.error:
+            pass
+    if plotter:
+        plotter.setpower(False)
+    sys.exit(0)
 
 
 def serve():
@@ -49,21 +77,9 @@ def serve():
     print("Listening on {}:{}".format(host, str(port)))
     server.serve_forever()
 
-
-def signal_handler(*args):
-    print('\nCtrl-C pressed, quitting...')
-    if socket:
-        socket.shutdown(sock.SHUT_RDWR)
-    if plotter:
-        plotter.setpower(False)
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    print("-= vPlotter Network Listener =-\nCtrl+C - terminate\n")
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-    plotter = Plotter()
+def process():
+    global starttime
+    starttime = datetime.datetime.now()
     thread = threading.Thread(target=serve)
     thread.setDaemon(True)
     thread.start()
@@ -73,7 +89,6 @@ if __name__ == "__main__":
             continue
 
         command = queue.get()
-
         try:
             socket.sendall(bytes("EXEC|" + command + ';;', "utf-8"))
         except OSError:
@@ -111,4 +126,18 @@ if __name__ == "__main__":
             socket.sendall(bytes(info + ';;', "utf-8"))
         except OSError:
             continue
+
     thread.join(10)
+
+
+def main():
+    global plotter
+    plotter = Plotter()
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    print("-= vPlotter Network Listener =-\nCtrl+C - terminate\n")
+    process()
+
+if __name__ == "__main__":
+    main()
+

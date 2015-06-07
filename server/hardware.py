@@ -504,6 +504,7 @@ class Plotter:
 
     def execute(self, command):
         """:type command: str"""
+        self._execstop = False
         command = command.strip()
         if len(command) == 0:
             return

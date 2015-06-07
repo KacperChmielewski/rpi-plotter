@@ -4,11 +4,10 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
-namespace RPiPlotter
+namespace RPiPlotter.Windows
 {
-    public partial class PreviewWindow : Gtk.Window
+    public sealed partial class PreviewWindow : Gtk.Window
     {
-        string _executingPathData;
         XmlElement pathElement, executingPathElement;
         XmlDocument document;
         string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "vPlotter_preview.svg");
@@ -18,17 +17,13 @@ namespace RPiPlotter
         {
             get
             {
-                return _executingPathData;
+                return executingPathElement != null ? executingPathElement.GetAttribute("d") : "";
             }
             set
             {
-                if (_executingPathData == value)
-                    return;
-                _executingPathData = value;
-                if (executingPathElement != null)
+                if (executingPathElement != null && executingPathElement.GetAttribute("d") != value)
                 {
-                    executingPathElement.SetAttribute("d", PathData + value);
-                    new Thread(RefreshPreview).Start();
+                    SetExecutingPathData(value, true);
                 }
             }
         }
@@ -43,8 +38,7 @@ namespace RPiPlotter
             {
                 if (pathElement != null && pathElement.GetAttribute("d") != value)
                 {
-                    pathElement.SetAttribute("d", value);
-                    new Thread(RefreshPreview).Start();
+                    SetPathData(value, true);
                 }
             }
         }
@@ -54,6 +48,7 @@ namespace RPiPlotter
         {
             this.Build();
             InitDocument();
+            new Thread(RefreshPreview).Start();
         }
 
         public void InitDocument()
@@ -64,9 +59,8 @@ namespace RPiPlotter
             document.AppendChild(svg);
             svg.SetAttribute("xmlns", "http://www.w3.org/2000/svg");
             svg.SetAttribute("version", "1.1");
-            svg.SetAttribute("width", "50000px");
-            svg.SetAttribute("height", "50000px");
-//            svg.SetAttribute("viewBox", "0 0 1052.3622 744.09448");
+            svg.SetAttribute("width", "210mm");
+            svg.SetAttribute("height", "297mm");
             var backgroundRect = document.CreateElement("rect");
             svg.AppendChild(backgroundRect);
             backgroundRect.SetAttribute("width", "100%");
@@ -82,10 +76,24 @@ namespace RPiPlotter
             svg.AppendChild(g);
         }
 
+        void SetExecutingPathData(string value, bool refresh = true)
+        {
+            executingPathElement.SetAttribute("d", value);
+            if (refresh)
+                new Thread(RefreshPreview).Start();
+        }
+
+        void SetPathData(string value, bool refresh = true)
+        {
+            pathElement.SetAttribute("d", value);
+            if (refresh)
+                new Thread(RefreshPreview).Start();
+        }
+
         public void ClearPaths()
         {
-            ExecutingPathData = string.Empty;
-            PathData = string.Empty;
+            SetExecutingPathData("", false);
+            SetPathData("", true);
         }
 
         public void RefreshPreview()

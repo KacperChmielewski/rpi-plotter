@@ -49,16 +49,17 @@
     <Compile Include="gtk-gui\generated.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="gtk-gui\RPiPlotter.MainWindow.cs" />
-    <Compile Include="gtk-gui\RPiPlotter.ConnectDialog.cs" />
     <Compile Include="Net\CommandEventArgs.cs" />
     <Compile Include="Net\Connector.cs" />
     <Compile Include="Windows\ConnectDialog.cs" />
     <Compile Include="Windows\MainWindow.cs" />
     <Compile Include="Net\CommandDoneEventArgs.cs" />
     <Compile Include="Windows\PreviewWindow.cs" />
-    <Compile Include="gtk-gui\RPiPlotter.PreviewWindow.cs" />
     <Compile Include="Net\DisconnectedEventArgs.cs" />
+    <Compile Include="Net\MessageReceivedEventArgs.cs" />
+    <Compile Include="gtk-gui\RPiPlotter.Windows.ConnectDialog.cs" />
+    <Compile Include="gtk-gui\RPiPlotter.Windows.PreviewWindow.cs" />
+    <Compile Include="gtk-gui\RPiPlotter.Windows.MainWindow.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
