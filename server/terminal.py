@@ -1,7 +1,7 @@
-from hardware import Plotter, CommandError
 import sys
 import signal
-import argparse
+
+from plotter import *
 
 
 def signal_handler(*args):

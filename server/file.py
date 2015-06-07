@@ -1,4 +1,4 @@
-from hardware import Plotter, CommandError
+from plotter import *
 import sys
 
 
@@ -18,8 +18,7 @@ class CommandFileParser:
         for cmd in cmds:
             print(cmd)
             try:
-                msg = self.plotter.execute(cmd)
-                if msg is not None:
+                for msg in self.plotter.execute(cmd):
                     print(msg)
             except CommandError as ex:
                 print("{} - {}, line {}.".format(cmd, str(ex), counter), file=sys.stderr)

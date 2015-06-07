@@ -3,14 +3,15 @@ import socketserver
 import socket as sock
 import datetime
 import threading
-import time
 import signal
 import sys
-from hardware import Plotter, CommandError, NotCalibratedError
+
+from plotter import *
 
 server, socket = None, None
 queue = Queue()
 starttime = None
+
 
 class TCPPlotterListener(socketserver.BaseRequestHandler):
     def handle(self):
@@ -77,6 +78,7 @@ def serve():
     print("Listening on {}:{}".format(host, str(port)))
     server.serve_forever()
 
+
 def process():
     global starttime
     starttime = datetime.datetime.now()
@@ -140,4 +142,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
