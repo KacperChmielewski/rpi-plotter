@@ -9,6 +9,7 @@ import sys
 from plotter import *
 
 server, socket = None, None
+prop = None
 queue = Queue()
 starttime = None
 
@@ -51,7 +52,8 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
         info = "Platform: " + platform.platform()
         uptime = datetime.datetime.now() - starttime
         info += "\nUptime: " + str(uptime)
-        print(info)
+        if prop.verbose:
+            print(info)
         try:
             self.request.sendall(bytes("MSG|" + info + ';;', "utf-8"))
         except OSError:
@@ -66,17 +68,21 @@ def signal_handler(*args):
         except sock.error:
             pass
     if plotter:
-        plotter.setpower(False)
+        plotter.shutdown()
     sys.exit(0)
 
 
 def serve():
-    host, port = "0.0.0.0", 9882
+    host, port = prop.host, int(prop.port)
     global server
-    server = socketserver.TCPServer((host, port), TCPPlotterListener)
+    try:
+        server = socketserver.TCPServer((host, port), TCPPlotterListener)
 
-    print("Listening on {}:{}".format(host, str(port)))
-    server.serve_forever()
+        print("Listening on {}:{}".format(host, str(port)))
+        server.serve_forever()
+    except OSError as ex:
+        print(str(ex) + " - {}:{}".format(host, str(port)), file=sys.stderr)
+
 
 
 def process():
@@ -123,21 +129,27 @@ def process():
         if msg:
             info += "|" + msg
 
-        print(info)
+        if prop.verbose:
+            print(info)
         try:
             socket.sendall(bytes(info + ';;', "utf-8"))
         except OSError:
             continue
 
-    thread.join(10)
-
 
 def main():
+    parser = argparse.ArgumentParser(description="TCP/IP server for remote controlling vPlotter", add_help=False)
+    parser.add_argument("--host", default="0.0.0.0", help='address used for listening')
+    parser.add_argument("--port", default=9882, help='port used for listening')
+    parser.add_argument("-v", "--verbose", default=False, help='verbose mode', dest='verbose', action='store_true')
     global plotter
-    plotter = Plotter()
+    plotter = Plotter(parentparser=parser)
+    global prop
+    prop = parser.parse_known_args()[0]
+
+    print("-= vPlotter Network Listener =-\nCtrl+C - terminate\n")
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
-    print("-= vPlotter Network Listener =-\nCtrl+C - terminate\n")
     process()
 
 if __name__ == "__main__":

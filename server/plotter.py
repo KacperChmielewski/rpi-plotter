@@ -1,6 +1,11 @@
 from threading import Thread
 import re
 import time
+import argparse
+import configparser
+import os
+import ast
+import sys
 
 from mathextra import *
 import hardware as hw
@@ -10,35 +15,42 @@ class Plotter:
     m1, m2 = [0, 0], [81013, 0]
     spr = 200  # steps per revolution in full step mode
     ms = 16  # (1, 2, 4, 8, 16)
-    calibrated = False
+    sr, atxpower, separator = None, None, None
     right_engine, left_engine = None, None
-    _power, _debug = False, False
-    startpoint, controlpoint = None, None
-    _execpause, _execstop = False, False
-    calibrationpoint = None
 
-    def __init__(self, power=True, debug=False):
-        self.setdebug(debug)
-        if self.getdebug():
-            print("Initializing shift register...")
-        self.sr = hw.ShiftRegister(15, 11, 13, 2)
+    def __init__(self, parentparser=None, init_hw=True):
+        if not parentparser:
+            parentparser = argparse.ArgumentParser(add_help=False)
+        parser = argparse.ArgumentParser(description="Software controller for vPlotter",
+                                         epilog="Happy plotting!",
+                                         parents=[parentparser],
+                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser.add_argument('--debug', default=False, action='store_true', help="display more information")
+        group_plotter = parser.add_argument_group("Plotter")
+        group_plotter.add_argument('-i', type=int, dest='poweroff_interval', metavar='<n>', default=15,
+                                   help="power off after <n> seconds, when idle")
+        group_plotter.add_argument("--calibrate", nargs=2, metavar=('<x>', '<y>'), dest='calpoint',
+                                   help="calibrate at <x>,<y> on start")
+        group_plotter.add_argument("--no-power", action='store_true',
+                                   help="start without power")
 
-        if self.getdebug():
-            print("Initializing ATX power supply...")
-        self.atxpower = hw.ATX(7, 15, self.sr)
+        group_state = parser.add_argument_group("State")
+        mutuals_state = group_state.add_mutually_exclusive_group()
+        # mutuals_state.add_argument('--state', nargs=1, metavar='file', type=argparse.FileType('rw'), dest='statefile')
+        mutuals_state.add_argument('--fresh-state', action='store_true',
+                                   help="create fresh state file")
+        mutuals_state.add_argument('--no-state', action='store_true',
+                                   help="ignore state file")
+        self.prop = parser.parse_args()
 
-        if self.getdebug():
-            print("Initializing left engine...")
-        self.left_engine = hw.A4988(26, 24, 14, 13, 12, 11, 10, 9, self.sr, side=0, revdir=True)
-        if self.getdebug():
-            print("Initializing right engine...")
-        self.right_engine = hw.A4988(18, 16, 6, 5, 4, 3, 2, 1, self.sr, side=1)
+        self.calibrated = False
+        self.debug, self.power = False, False
+        self._execpause, self._execstop = False, False
+        self.startpoint, self.controlpoint = None, None
+        self.calpoint = None
+        self.poweroff_interval = 15
 
-        if self.getdebug():
-            print("Initializing separator...")
-        self.separator = hw.Servo(23)
-
-        self.setpower(power)
+        self.statepath = None
 
         # SVG Path Data and plotter specific commands
         # http://www.w3.org/TR/SVGTiny12/paths.html
@@ -72,10 +84,96 @@ class Plotter:
                            'LEN': (self.getlength, 0),
                            'PWR': (self.setpower, 1),
                            'DBG': (self.setdebug, 1)  # prints info in terminal
-                           # 'E': self.poweroff
         }
-        self.poweroffthread = self.PowerOffThread(15, self.getpower, self.setpower)
+
+        if self.prop.debug:
+            self.setdebug(self.prop.debug)
+
+        if self.prop.no_state:
+            if self.getdebug():
+                print("Skipping state load...")
+        else:
+            self.statepath = os.path.expanduser('~/.config/vPlotter')
+            if not os.path.exists(self.statepath):
+                os.makedirs(self.statepath)
+            self.statepath = os.path.join(self.statepath, "state.conf")
+            self.loadstate()
+
+        if self.prop.poweroff_interval != self.poweroff_interval:
+            self.poweroff_interval = self.prop.poweroff_interval
+        self.poweroffthread = self.PowerOffThread(self.poweroff_interval, self.getpower, self.setpower)
+        if init_hw:
+            self.init_hw()
+
+    def init_hw(self):
+        if self.getdebug():
+            print("Initializing shift register...")
+        self.sr = hw.ShiftRegister(15, 11, 13, 2)
+
+        if self.getdebug():
+            print("Initializing ATX power supply...")
+        self.atxpower = hw.ATX(7, 15, self.sr)
+
+        if self.getdebug():
+            print("Initializing left engine...")
+        self.left_engine = hw.A4988(26, 24, 14, 13, 12, 11, 10, 9, self.sr, side=0, revdir=True)
+        if self.getdebug():
+            print("Initializing right engine...")
+        self.right_engine = hw.A4988(18, 16, 6, 5, 4, 3, 2, 1, self.sr, side=1)
+
+        if self.getdebug():
+            print("Initializing separator...")
+        self.separator = hw.Servo(23)
+        if self.prop.calpoint:
+            self.calibrate(self.prop.calpoint[0], self.prop.calpoint[1])
+
+        if not self.prop.no_power:
+            self.setpower(True)
         self.poweroffthread.start()
+
+    def loadstate(self):
+        if self.prop.fresh_state or not os.path.isfile(self.statepath):
+            if self.getdebug():
+                print("Creating new state file in " + self.statepath + " ...")
+            open(self.statepath, 'w').close()
+        else:
+            config = configparser.ConfigParser()
+            config.read_file(open(self.statepath))
+            if not config.has_section("Plotter"):
+                if self.getdebug():
+                    print("Invalid state file: " + self.statepath + "\nCreating new ...", file=sys.stderr)
+                config.clear()
+                return
+
+            if self.getdebug():
+                print("Reading state from " + self.statepath + " ...")
+            try:
+                p = config["Plotter"]
+
+                length = ast.literal_eval(p['Length'])
+                calpoint = ast.literal_eval(p['CalPoint'])
+                poweroff_interval = int(p['Poweroff interval'])
+                hw.length = length
+                self.calpoint = calpoint
+                if calpoint:
+                    self.calibrated = True
+                self.poweroff_interval = poweroff_interval
+            except KeyError as ex:
+                print("Cannot load " + self.statepath + " state file! Using default values instead.",
+                      file=sys.stderr)
+
+    def savestate(self):
+        config = configparser.ConfigParser()
+        config["Plotter"] = {
+            'Length': str(hw.length),
+            'CalPoint': str(self.calpoint),
+            'Poweroff interval': self.poweroff_interval
+        }
+        with open(self.statepath, 'w') as configfile:
+            configfile.write("### vPlotter State File\n### DO NOT MODIFY THIS FILE!!!\n\n")
+            config.write(configfile)
+            if self.getdebug():
+                print("State saved to " + self.statepath)
 
     def move(self, left, right, speed):
         if not self.getpower():
@@ -112,8 +210,8 @@ class Plotter:
     def moveto(self, x, y, speed=1, sep=True, savepoint=True):
         if not self.calibrated:
             raise NotCalibratedError()
-        x += self.calibrationpoint[0]
-        y += self.calibrationpoint[1]
+        x += self.calpoint[0]
+        y += self.calpoint[1]
         if not self.startpoint:
             self._savestartpoint()
         if self.controlpoint:
@@ -229,16 +327,18 @@ class Plotter:
         self.separator.set(int(state))
 
     def calibrate(self, x, y):
-        hw.length = ctl((int(x), int(y)), self.m1, self.m2)
+        self.calpoint = (int(x), int(y))
+        hw.length = ctl(self.calpoint, self.m1, self.m2)
         hw.length = [int(hw.length[0]), int(hw.length[1])]
-        self.calibrationpoint = (x, y)
         self.calibrated = True
+        if self.getdebug():
+            print("Calibrated at " + str(self.calpoint))
 
     def getcoord(self, offset=True):
         if self.calibrated:
             x, y = ltc(hw.length, self.m1, self.m2)
             if offset:
-                return x - self.calibrationpoint[0], y - self.calibrationpoint[1]
+                return x - self.calpoint[0], y - self.calpoint[1]
             else:
                 return x, y
         else:
@@ -249,40 +349,40 @@ class Plotter:
         return hw.length
 
     def getpower(self):
-        return self._power
+        return self.power
 
     def setpower(self, value):
         value = bool(int(value))
-        if self._power == value:
+        if self.power == value:
             if self.getdebug():
                 state = "OFF"
                 if value:
                     state = "ON"
                 print("POWER: already turned " + state)
             return
-        self._power = value
+        self.power = value
 
         if self.getdebug():
             state = "OFF"
             if self.getpower():
                 state = "ON"
             print("Turning {} power and motors...".format(state))
-        self.atxpower.power(self.getpower())
-        self.atxpower.loadr(self.getpower())
-        self.left_engine.power(self.getpower())
-        self.right_engine.power(self.getpower())
+        self.atxpower.power(value)
+        self.atxpower.loadr(value)
+        self.left_engine.power(value)
+        self.right_engine.power(value)
 
     def getdebug(self):
-        return self._debug
+        return self.debug
 
     def setdebug(self, value):
         value = bool(int(value))
-        if self._debug == value:
+        if self.debug == value:
             return
-        self._debug = value
+        self.debug = value
 
         state = "disabled"
-        if self.getdebug():
+        if value:
             state = "enabled"
         print("Debug mode " + state)
 
@@ -364,6 +464,11 @@ class Plotter:
                 yield action()
             self.setseparator(True)
             self.poweroffthread.restart()
+
+    def shutdown(self):
+        if not self.prop.no_state:
+            self.savestate()
+        self.setpower(False)
 
     class PowerOffThread(Thread):
         _cancelled = False
