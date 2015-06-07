@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RPiPlotter.Windows
+namespace RPiPlotter
 {
     public partial class ConnectDialog : Gtk.Dialog
     {

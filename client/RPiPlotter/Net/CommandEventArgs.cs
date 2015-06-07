@@ -3,7 +3,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Text;
 
-namespace RPiPlotter.Net
+namespace RPiPlotter
 {
     public class CommandEventArgs : EventArgs
     {

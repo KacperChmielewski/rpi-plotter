@@ -1,18 +1,15 @@
 ﻿using System;
 using Gtk;
 using System.Text.RegularExpressions;
-using RPiPlotter.Net;
-using RPiPlotter.Common;
 
-namespace RPiPlotter.Windows
+namespace RPiPlotter
 {
     public partial class MainWindow : Gtk.Window
     {
         ListStore commandListStore;
         Connector connector;
-        Gdk.Pixbuf donePixbuf, errorPixbuf, executingPixbuf, connectedPixbuf, disconnectedPixbuf;
+        Gdk.Pixbuf donePixbuf, errorPixbuf, executingPixbuf;
         PreviewWindow previewWindow;
-        RPiPlotter.Common.Unit selectedUnit;
 
         public MainWindow()
             : base(WindowType.Toplevel)
@@ -24,22 +21,17 @@ namespace RPiPlotter.Windows
             previewWindow.RefreshPreview();
             this.SetupCommandTreeView();
             this.LoadIcons();
-            stepsAction.Activate();
         }
 
         void SetupCommandTreeView()
         {
-            commandListStore = new ListStore(typeof(Gdk.Pixbuf), typeof(string), typeof(string), typeof(string), typeof(bool));
+            commandListStore = new ListStore(typeof(Gdk.Pixbuf), typeof(string), typeof(string), typeof(bool));
             commandTreeView.Model = commandListStore;
 
-            var cellRendererText = new CellRendererText()
-            {
-                WrapMode = Pango.WrapMode.Word,
-            };
             // Add the columns to the TreeView
             commandTreeView.AppendColumn("Status", new CellRendererPixbuf(), "pixbuf", 0);
-            commandTreeView.AppendColumn("Command", cellRendererText, "text", 1);
-            commandTreeView.AppendColumn("Time", cellRendererText, "text", 3);
+            commandTreeView.AppendColumn("Command", new CellRendererText(), "text", 1);
+            commandTreeView.AppendColumn("Time", new CellRendererText(), "text", 2);
         }
 
         void LoadIcons()
@@ -47,8 +39,6 @@ namespace RPiPlotter.Windows
             var iconTheme = new IconTheme();
 
             donePixbuf = iconTheme.LoadIcon("gtk-apply", 16, IconLookupFlags.NoSvg);
-            connectedPixbuf = iconTheme.LoadIcon("gtk-connect", 16, IconLookupFlags.NoSvg);
-            disconnectedPixbuf = iconTheme.LoadIcon("gtk-disconnect", 16, IconLookupFlags.NoSvg);
             errorPixbuf = new Gdk.Pixbuf("Icons/error.png");
             executingPixbuf = new Gdk.Pixbuf("Icons/execute.png");
         }
@@ -64,9 +54,8 @@ namespace RPiPlotter.Windows
         void SendCommand(string command)
         {
             command = command.Trim();
-            var converted = UnitConverter.ToSteps(command, selectedUnit);
-            connector.Send(converted);
-            var iter = commandListStore.AppendValues(null, command, converted);
+            connector.Send(command);
+            var iter = commandListStore.AppendValues(null, command);
             commandTreeView.ScrollToCell(commandListStore.GetPath(iter), commandTreeView.Columns[0], true, 0, 0);
         }
 
@@ -74,9 +63,6 @@ namespace RPiPlotter.Windows
         {
             disconnectAction.Sensitive = false;
             contentvbox.Sensitive = false;
-            CommandUnitAction.Sensitive = true;
-            connectionStatusImage.Pixbuf = disconnectedPixbuf;
-            connectionStatusLabel.Text = "Disconnected";
             commandListStore.Clear();
             previewWindow.ClearPaths();
         }
@@ -130,11 +116,6 @@ namespace RPiPlotter.Windows
         {
             disconnectAction.Sensitive = true;
             contentvbox.Sensitive = true;
-            CommandUnitAction.Sensitive = false;
-            sendcommandButton.Sensitive = false;
-            connectionStatusImage.Pixbuf = connectedPixbuf;
-            connectionStatusLabel.Text = "Connected";
-
         }
 
         void OnConnectorConnectionError(object sender, UnhandledExceptionEventArgs e)
@@ -174,7 +155,7 @@ namespace RPiPlotter.Windows
             var index = 0;
             foreach (object[] row in commandListStore)
             {
-                if (e.Command.Equals(row[2]) && row[0] == executingPixbuf)
+                if (e.Command.Equals(row[1]) && row[0] == executingPixbuf)
                 {
                     break;
                 }
@@ -215,7 +196,7 @@ namespace RPiPlotter.Windows
             var index = 0;
             foreach (object[] row in commandListStore)
             {
-                if (e.Command.Equals(row[2]) && row[0] == executingPixbuf)
+                if (e.Command.Equals(row[1]) && row[0] == executingPixbuf)
                 {
                     break;
                 }
@@ -225,8 +206,8 @@ namespace RPiPlotter.Windows
             if (commandListStore.GetIterFromString(out iter, index.ToString()))
             {
                 commandListStore.SetValue(iter, 0, donePixbuf);
-                commandListStore.SetValue(iter, 3, e.ExecutionTime);
-                commandListStore.SetValue(iter, 4, true);
+                commandListStore.SetValue(iter, 2, e.ExecutionTime);
+                commandListStore.SetValue(iter, 3, true);
 
                 if (previewWindow != null)
                 {
@@ -252,7 +233,7 @@ namespace RPiPlotter.Windows
             var index = 0;
             foreach (object[] row in commandListStore)
             {
-                if (e.Command.Equals(row[2]) && row[0] == null)
+                if (e.Command.Equals(row[1]) && row[0] == null)
                 {
                     break;
                 }
@@ -279,7 +260,7 @@ namespace RPiPlotter.Windows
         {
             TreeIter iter;
             commandListStore.GetIter(out iter, args.Path);
-            if ((bool)commandListStore.GetValue(iter, 4) == true)
+            if ((bool)commandListStore.GetValue(iter, 3) == true)
             {
                 SendCommand((string)commandListStore.GetValue(iter, 1));
             }
@@ -335,45 +316,6 @@ namespace RPiPlotter.Windows
             else
                 connector.Send("!UNPAUSE");
         }
-
-        #region Unit radio group
-
-        protected void RefreshUnitLabel(RadioAction action)
-        {
-            unitLabel.Text = "Unit: " + action.Label;
-        }
-
-        protected void OnEngineStepsActionActivated(object sender, EventArgs e)
-        {
-            selectedUnit = RPiPlotter.Common.Unit.None;
-            RefreshUnitLabel(sender as RadioAction);
-        }
-
-        protected void OnPtActionActivated(object sender, EventArgs e)
-        {
-            selectedUnit = RPiPlotter.Common.Unit.Points;
-            RefreshUnitLabel(sender as RadioAction);
-        }
-
-        protected void OnCmActionActivated(object sender, EventArgs e)
-        {
-            selectedUnit = RPiPlotter.Common.Unit.Centimeters;
-            RefreshUnitLabel(sender as RadioAction);
-        }
-
-        protected void OnInActionActivated(object sender, EventArgs e)
-        {
-            selectedUnit = RPiPlotter.Common.Unit.Inches;
-            RefreshUnitLabel(sender as RadioAction);
-        }
-
-        protected void OnMmActionActivated(object sender, EventArgs e)
-        {
-            selectedUnit = RPiPlotter.Common.Unit.Milimeters;
-            RefreshUnitLabel(sender as RadioAction);
-        }
-
-        #endregion
     }
 }
 

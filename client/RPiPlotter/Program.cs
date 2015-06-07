@@ -1,6 +1,5 @@
 ﻿using System;
 using Gtk;
-using RPiPlotter.Windows;
 
 namespace RPiPlotter
 {
