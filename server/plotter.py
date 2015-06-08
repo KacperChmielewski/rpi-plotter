@@ -265,6 +265,31 @@ class Plotter:
             t += 0.01
         self.controlpoint = (x2, y2)
 
+    def curveto_rel(self, x1, y1, x2, y2, x, y):
+        raise NotImplementedError()
+
+    def scurveto(self, x2, y2, x, y):
+        raise NotImplementedError()
+
+    def scurveto_rel(self, x2, y2, x, y):
+        raise NotImplementedError()
+
+    def qcurveto(self, x1, y1, x, y):
+        t = 0
+        while t <= 1:
+            self.drawcurve(t, (self.getcoord(), (x1, y1), (x, y)))
+            t += 0.01
+        self.controlpoint = (x1, y1)
+
+    def qcurveto_rel(self, x1, y1, x, y):
+        raise NotImplementedError()
+
+    def sqcurveto(self, x, y):
+        raise NotImplementedError()
+
+    def sqcurveto_rel(self, x, y):
+        raise NotImplementedError()
+
     # def curveto_rel(self, x1, y1, x2, y2, x, y, res=100):
     #     start = self.getcoord()
     #     if all_same(x1, x2, x) or all_same(y1, y2, y):
@@ -467,13 +492,13 @@ class Plotter:
             self.savestate()
         self.setpower(False)
 
-    def printdbg(self, *objects, sep='', end='\n', file=None, flush=False):
+    def printdbg(self, *objects, sep='', end='\n', file=None):
         if self.args.debug:
-            print(*objects, sep=sep, end=end, file=file, flush=flush)
+            print(*objects, sep=sep, end=end, file=file)
 
-    def printv(self, *objects, sep='', end='\n', file=None, flush=False):
+    def printv(self, *objects, sep='', end='\n', file=None):
         if self.args.verbose:
-            print(*objects, sep=sep, end=end, file=file, flush=flush)
+            print(*objects, sep=sep, end=end, file=file)
 
     class PowerOffThread(Thread):
         _cancelled = False
