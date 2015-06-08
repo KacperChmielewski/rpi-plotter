@@ -467,13 +467,13 @@ class Plotter:
             self.savestate()
         self.setpower(False)
 
-    def printdbg(self, *objects, sep='', end='\n', file=None, flush=False):
+    def printdbg(self, *objects, sep='', end='\n', file=None):
         if self.args.debug:
-            print(*objects, sep=sep, end=end, file=file, flush=flush)
+            print(*objects, sep=sep, end=end, file=file)
 
-    def printv(self, *objects, sep='', end='\n', file=None, flush=False):
+    def printv(self, *objects, sep='', end='\n', file=None):
         if self.args.verbose:
-            print(*objects, sep=sep, end=end, file=file, flush=flush)
+            print(*objects, sep=sep, end=end, file=file)
 
     class PowerOffThread(Thread):
         _cancelled = False
