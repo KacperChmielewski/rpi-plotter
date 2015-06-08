@@ -204,7 +204,6 @@ class Plotter:
             self.controlpoint = None
         self.setseparator(sep)
         destination = ctl([int(x), int(y)], self.m1, self.m2)
-        self.printdbg("Strings length after: " + str(destination))
         change = (int(destination[0] - hw.length[0]), int(destination[1] - hw.length[1]))
         self.printdbg("Strings change: " + str(change))
         self.move(change[0], change[1], speed)
@@ -221,7 +220,6 @@ class Plotter:
         if self.controlpoint:
             self.controlpoint = None
         destination = ctl([currentpos[0] + int(x), currentpos[1] + int(y)], self.m1, self.m2)
-        self.printdbg("Strings length after: " + str(destination))
         change = (int(destination[0] - hw.length[0]), int(destination[1] - hw.length[1]))
         self.printdbg("Strings change: " + str(change))
         self.move(change[0], change[1], speed)
@@ -249,73 +247,92 @@ class Plotter:
     def closepath(self, speed=1):
         self.moveto(self.startpoint[0], self.startpoint[1], speed, False, False)
 
-    def curveto(self, x1, y1, x2, y2, x, y, res=100):
-        if all_same(x1, x2, x) or all_same(y1, y2, y):
-            self.moveto(x, y, savepoint=False)
-        else:
-            start = self.getcoord()
-            for t in range(1, res + 1):
-                bx = int(cubicbezier(t / res, start[0], x1, x2, x))
-                by = int(cubicbezier(t / res, start[1], y1, y2, y))
-                self.lineto(bx, by)
+    # def curveto(self, x1, y1, x2, y2, x, y, res=100):
+    #     if all_same(x1, x2, x) or all_same(y1, y2, y):
+    #         self.moveto(x, y, savepoint=False)
+    #     else:
+    #         start = self.getcoord()
+    #         for t in range(1, res + 1):
+    #             bx = int(cubicbezier(t / res, start[0], x1, x2, x))
+    #             by = int(cubicbezier(t / res, start[1], y1, y2, y))
+    #             self.lineto(bx, by)
+    #     self.controlpoint = (x2, y2)
+
+    def curveto(self, x1, y1, x2, y2, x, y):
+        t = 0
+        while t <= 1:
+            self.drawcurve(t, (self.getcoord(), (x1, y1), (x2, y2), (x, y)))
+            t += 0.01
         self.controlpoint = (x2, y2)
 
-    def curveto_rel(self, x1, y1, x2, y2, x, y, res=100):
-        start = self.getcoord()
-        if all_same(x1, x2, x) or all_same(y1, y2, y):
-            self.moveto(x, y, savepoint=False)
+    # def curveto_rel(self, x1, y1, x2, y2, x, y, res=100):
+    #     start = self.getcoord()
+    #     if all_same(x1, x2, x) or all_same(y1, y2, y):
+    #         self.moveto(x, y, savepoint=False)
+    #     else:
+    #         for t in range(1, res + 1):
+    #             bx = int(cubicbezier(t / res, 0, x1, x2, x))
+    #             by = int(cubicbezier(t / res, 0, y1, y2, y))
+    #             bx += start[0]
+    #             by += start[1]
+    #             self.lineto(bx, by)
+    #     self.controlpoint = (x2 + start[0], y2 + start[1])
+    #
+    # def scurveto(self, x2, y2, x, y, res=100):
+    #     x1, y1 = self._getconpointreflection()
+    #     self.curveto(x1, y1, x2, y2, x, y, res)
+    #
+    # def scurveto_rel(self, x2, y2, x, y, res=100):
+    #     start = self.getcoord()
+    #     sx = start[0]
+    #     sy = start[1]
+    #     x1, y1 = self._getconpointreflection()
+    #     self.curveto(x1, y1, x2 + sx, y2 + sy, x + sx, y + sy, res)
+    #
+    # def qcurveto(self, x1, y1, x, y, res=100):
+    #     if all_same(x1, x) or all_same(y1, y):
+    #         self.moveto(x, y, savepoint=False)
+    #     else:
+    #         start = self.getcoord()
+    #         for t in range(1, res + 1):
+    #             bx = int(quadbezier(t / res, start[0], x1, x))
+    #             by = int(quadbezier(t / res, start[1], y1, y))
+    #             self.lineto(bx, by)
+    #     self.controlpoint = (x1, y1)
+    #
+    # def qcurveto_rel(self, x1, y1, x, y, res=100):
+    #     start = self.getcoord()
+    #
+    #     if all_same(x1, x) or all_same(y1, y):
+    #         self.moveto(x, y, savepoint=False)
+    #     else:
+    #         for t in range(1, res + 1):
+    #             bx = int(quadbezier(t / res, 0, x1, x))
+    #             by = int(quadbezier(t / res, 0, y1, y))
+    #             bx += start[0]
+    #             by += start[1]
+    #             self.lineto(bx, by)
+    #     self.controlpoint = (x1 + start[0], y1 + start[1])
+    #
+    # def sqcurveto(self, x, y, res=100):
+    #     x1, y1 = self._getconpointreflection()
+    #     self.qcurveto(x1, y1, x, y, res)
+    #
+    # def sqcurveto_rel(self, x, y, res=100):
+    #     start = self.getcoord()
+    #     x1, y1 = self._getconpointreflection()
+    #     self.qcurveto(x1, y1, x + start[0], y + start[1], res)
+
+    def drawcurve(self, t, points):
+        if len(points) == 1:
+            self.lineto(points[0][0], points[0][1])
         else:
-            for t in range(1, res + 1):
-                bx = int(cubicbezier(t / res, 0, x1, x2, x))
-                by = int(cubicbezier(t / res, 0, y1, y2, y))
-                bx += start[0]
-                by += start[1]
-                self.lineto(bx, by)
-        self.controlpoint = (x2 + start[0], y2 + start[1])
-
-    def scurveto(self, x2, y2, x, y, res=100):
-        x1, y1 = self._getconpointreflection()
-        self.curveto(x1, y1, x2, y2, x, y, res)
-
-    def scurveto_rel(self, x2, y2, x, y, res=100):
-        start = self.getcoord()
-        sx = start[0]
-        sy = start[1]
-        x1, y1 = self._getconpointreflection()
-        self.curveto(x1, y1, x2 + sx, y2 + sy, x + sx, y + sy, res)
-
-    def qcurveto(self, x1, y1, x, y, res=100):
-        if all_same(x1, x) or all_same(y1, y):
-            self.moveto(x, y, savepoint=False)
-        else:
-            start = self.getcoord()
-            for t in range(1, res + 1):
-                bx = int(quadbezier(t / res, start[0], x1, x))
-                by = int(quadbezier(t / res, start[1], y1, y))
-                self.lineto(bx, by)
-        self.controlpoint = (x1, y1)
-
-    def qcurveto_rel(self, x1, y1, x, y, res=100):
-        start = self.getcoord()
-        if all_same(x1, x) or all_same(y1, y):
-            self.moveto(x, y, savepoint=False)
-        else:
-            for t in range(1, res + 1):
-                bx = int(quadbezier(t / res, 0, x1, x))
-                by = int(quadbezier(t / res, 0, y1, y))
-                bx += start[0]
-                by += start[1]
-                self.lineto(bx, by)
-        self.controlpoint = (x1 + start[0], y1 + start[1])
-
-    def sqcurveto(self, x, y, res=100):
-        x1, y1 = self._getconpointreflection()
-        self.qcurveto(x1, y1, x, y, res)
-
-    def sqcurveto_rel(self, x, y, res=100):
-        start = self.getcoord()
-        x1, y1 = self._getconpointreflection()
-        self.qcurveto(x1, y1, x + start[0], y + start[1], res)
+            newpoints = []
+            for i in range(0, len(points) - 1):
+                x = (1 - t) * points[i][0] + t * points[i + 1][0]
+                y = (1 - t) * points[i][1] + t * points[i + 1][1]
+                newpoints.append((x, y))
+            self.drawcurve(t, newpoints)
 
     def setseparator(self, state):
         self.separator.set(int(state))
