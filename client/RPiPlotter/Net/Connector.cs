@@ -38,6 +38,7 @@ namespace RPiPlotter.Net
 
         TcpClient client;
         Thread receiverThread, checkThread;
+        int _counter = 0;
 
         public Connector(Gtk.Window parent)
         {
@@ -112,9 +113,10 @@ namespace RPiPlotter.Net
                                 if (CommandDone != null)
                                 {
                                     CommandDoneEventArgs commandArgs = null;
+                                    var cmdIndex = int.Parse(msgParts[1]);
                                     commandArgs = msgParts.Length == 4 ?
-									new CommandDoneEventArgs(msgParts[1], msgParts[2], msgParts[3]) : 
-									new CommandDoneEventArgs(msgParts[1], msgParts[2]);
+                                        new CommandDoneEventArgs(cmdIndex, msgParts[2], msgParts[3]) : 
+                                        new CommandDoneEventArgs(cmdIndex, msgParts[2]);
 
                                     Gtk.Application.Invoke((sender, e) => CommandDone(this, commandArgs));
                                 }
@@ -124,9 +126,10 @@ namespace RPiPlotter.Net
                                 if (CommandFail != null)
                                 {
                                     CommandEventArgs commandArgs = null;
+                                    var cmdIndex = int.Parse(msgParts[1]);
                                     commandArgs = msgParts.Length == 3 ?
-									new CommandEventArgs(msgParts[1], msgParts[2]) : 
-									new CommandEventArgs(msgParts[1]);
+                                        new CommandEventArgs(cmdIndex, msgParts[2]) : 
+                                        new CommandEventArgs(cmdIndex);
 
                                     Gtk.Application.Invoke((sender, e) => CommandFail(this, commandArgs));
                                 }
@@ -135,7 +138,7 @@ namespace RPiPlotter.Net
                             {
                                 if (CommandExecuting != null)
                                 {
-                                    var commandArgs = new CommandEventArgs(msgParts[1]);
+                                    var commandArgs = new CommandEventArgs(int.Parse(msgParts[1]));
                                     Gtk.Application.Invoke((sender, e) => CommandExecuting(this, commandArgs));
                                 }
                             }
@@ -167,11 +170,11 @@ namespace RPiPlotter.Net
             
         }
 
-        public void Send(string msg)
+        public void SendServerCommand(string msg)
         {
             try
             {
-                var msgBytes = Encoding.ASCII.GetBytes(msg);
+                var msgBytes = Encoding.ASCII.GetBytes("!" + msg);
                 client.Client.Send(msgBytes);
             }
             catch (Exception ex)
@@ -180,6 +183,23 @@ namespace RPiPlotter.Net
                     ConnectionError(this, new UnhandledExceptionEventArgs(ex, true));
                 Disconnect();
             }
+        }
+
+        public int Send(string msg)
+        {
+            try
+            {
+                var msgBytes = Encoding.ASCII.GetBytes(_counter + "|" + msg);
+                client.Client.Send(msgBytes);
+            }
+            catch (Exception ex)
+            {
+                if (ConnectionError != null)
+                    ConnectionError(this, new UnhandledExceptionEventArgs(ex, true));
+                Disconnect();
+                return -1;
+            }
+            return _counter++;
         }
     }
 }

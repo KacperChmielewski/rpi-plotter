@@ -25,6 +25,7 @@ class Plotter:
                                          epilog="Happy plotting!",
                                          parents=[parentparser],
                                          formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser.add_argument("-v", "--verbose", default=False, help='verbose mode', dest='verbose', action='store_true')
         parser.add_argument('--debug', default=False, action='store_true', help="display more information")
         group_plotter = parser.add_argument_group("Plotter")
         group_plotter.add_argument('-i', type=int, dest='poweroff_interval', metavar='<n>', default=15,
@@ -41,10 +42,10 @@ class Plotter:
                                    help="create fresh state file")
         mutuals_state.add_argument('--no-state', action='store_true',
                                    help="ignore state file")
-        self.prop = parser.parse_args()
+        self.args = parser.parse_args()
 
         self.calibrated = False
-        self.debug, self.power = False, False
+        self.power = False
         self._execpause, self._execstop = False, False
         self.startpoint, self.controlpoint = None, None
         self.calpoint = None
@@ -82,16 +83,10 @@ class Plotter:
                            'CAL': (self.calibrate, 2),
                            'COR': (self.getcoord, 0),
                            'LEN': (self.getlength, 0),
-                           'PWR': (self.setpower, 1),
-                           'DBG': (self.setdebug, 1)  # prints info in terminal
+                           'PWR': (self.setpower, 1)
         }
-
-        if self.prop.debug:
-            self.setdebug(self.prop.debug)
-
-        if self.prop.no_state:
-            if self.getdebug():
-                print("Skipping state load...")
+        if self.args.no_state:
+            self.printv("Skipping state load...")
         else:
             self.statepath = os.path.expanduser('~/.config/vPlotter')
             if not os.path.exists(self.statepath):
@@ -99,54 +94,46 @@ class Plotter:
             self.statepath = os.path.join(self.statepath, "state.conf")
             self.loadstate()
 
-        if self.prop.poweroff_interval != self.poweroff_interval:
-            self.poweroff_interval = self.prop.poweroff_interval
+        if self.args.poweroff_interval != self.poweroff_interval:
+            self.poweroff_interval = self.args.poweroff_interval
         self.poweroffthread = self.PowerOffThread(self.poweroff_interval, self.getpower, self.setpower)
         if init_hw:
             self.init_hw()
 
     def init_hw(self):
-        if self.getdebug():
-            print("Initializing shift register...")
+        self.printv("Initializing shift register...")
         self.sr = hw.ShiftRegister(15, 11, 13, 2)
 
-        if self.getdebug():
-            print("Initializing ATX power supply...")
+        self.printv("Initializing ATX power supply...")
         self.atxpower = hw.ATX(7, 15, self.sr)
 
-        if self.getdebug():
-            print("Initializing left engine...")
+        self.printv("Initializing left engine...")
         self.left_engine = hw.A4988(26, 24, 14, 13, 12, 11, 10, 9, self.sr, side=0, revdir=True)
-        if self.getdebug():
-            print("Initializing right engine...")
+        self.printv("Initializing right engine...")
         self.right_engine = hw.A4988(18, 16, 6, 5, 4, 3, 2, 1, self.sr, side=1)
 
-        if self.getdebug():
-            print("Initializing separator...")
+        self.printv("Initializing separator...")
         self.separator = hw.Servo(23)
-        if self.prop.calpoint:
-            self.calibrate(self.prop.calpoint[0], self.prop.calpoint[1])
+        if self.args.calpoint:
+            self.calibrate(self.args.calpoint[0], self.args.calpoint[1])
 
-        if not self.prop.no_power:
+        if not self.args.no_power:
             self.setpower(True)
         self.poweroffthread.start()
 
     def loadstate(self):
-        if self.prop.fresh_state or not os.path.isfile(self.statepath):
-            if self.getdebug():
-                print("Creating new state file in " + self.statepath + " ...")
+        if self.args.fresh_state or not os.path.isfile(self.statepath):
+            self.printv("Creating new state file in " + self.statepath + " ...")
             open(self.statepath, 'w').close()
         else:
             config = configparser.ConfigParser()
             config.read_file(open(self.statepath))
             if not config.has_section("Plotter"):
-                if self.getdebug():
-                    print("Invalid state file: " + self.statepath + "\nCreating new ...", file=sys.stderr)
+                print("Invalid state file: " + self.statepath + "\nCreating new ...", file=sys.stderr)
                 config.clear()
                 return
 
-            if self.getdebug():
-                print("Reading state from " + self.statepath + " ...")
+            self.printv("Reading state from " + self.statepath + " ...")
             try:
                 p = config["Plotter"]
 
@@ -158,7 +145,7 @@ class Plotter:
                 if calpoint:
                     self.calibrated = True
                 self.poweroff_interval = poweroff_interval
-            except KeyError as ex:
+            except KeyError:
                 print("Cannot load " + self.statepath + " state file! Using default values instead.",
                       file=sys.stderr)
 
@@ -172,8 +159,7 @@ class Plotter:
         with open(self.statepath, 'w') as configfile:
             configfile.write("### vPlotter State File\n### DO NOT MODIFY THIS FILE!!!\n\n")
             config.write(configfile)
-            if self.getdebug():
-                print("State saved to " + self.statepath)
+            self.printv("State saved to " + self.statepath)
 
     def move(self, left, right, speed):
         if not self.getpower():
@@ -218,11 +204,9 @@ class Plotter:
             self.controlpoint = None
         self.setseparator(sep)
         destination = ctl([int(x), int(y)], self.m1, self.m2)
-        if self.getdebug():
-            print("Destination: " + str(destination))
+        self.printdbg("Strings length after: " + str(destination))
         change = (int(destination[0] - hw.length[0]), int(destination[1] - hw.length[1]))
-        if self.getdebug():
-            print("Strings change: " + str(change))
+        self.printdbg("Strings change: " + str(change))
         self.move(change[0], change[1], speed)
         if savepoint:
             self._savestartpoint()
@@ -237,11 +221,9 @@ class Plotter:
         if self.controlpoint:
             self.controlpoint = None
         destination = ctl([currentpos[0] + int(x), currentpos[1] + int(y)], self.m1, self.m2)
-        if self.getdebug():
-            print("Destination: " + str(destination))
+        self.printdbg("Strings length after: " + str(destination))
         change = (int(destination[0] - hw.length[0]), int(destination[1] - hw.length[1]))
-        if self.getdebug():
-            print("Strings change: " + str(change))
+        self.printdbg("Strings change: " + str(change))
         self.move(change[0], change[1], speed)
         if savepoint:
             self._savestartpoint()
@@ -268,22 +250,28 @@ class Plotter:
         self.moveto(self.startpoint[0], self.startpoint[1], speed, False, False)
 
     def curveto(self, x1, y1, x2, y2, x, y, res=100):
-        start = self.getcoord()
-        for t in range(1, res + 1):
-            bx = int(cubicbezier(t / res, start[0], x1, x2, x))
-            by = int(cubicbezier(t / res, start[1], y1, y2, y))
-            self.lineto(bx, by)
-            self.controlpoint = (x2, y2)
+        if all_same(x1, x2, x) or all_same(y1, y2, y):
+            self.moveto(x, y, savepoint=False)
+        else:
+            start = self.getcoord()
+            for t in range(1, res + 1):
+                bx = int(cubicbezier(t / res, start[0], x1, x2, x))
+                by = int(cubicbezier(t / res, start[1], y1, y2, y))
+                self.lineto(bx, by)
+        self.controlpoint = (x2, y2)
 
     def curveto_rel(self, x1, y1, x2, y2, x, y, res=100):
         start = self.getcoord()
-        for t in range(1, res + 1):
-            bx = int(cubicbezier(t / res, 0, x1, x2, x))
-            by = int(cubicbezier(t / res, 0, y1, y2, y))
-            bx += start[0]
-            by += start[1]
-            self.lineto(bx, by)
-            self.controlpoint = (x2 + start[0], y2 + start[1])
+        if all_same(x1, x2, x) or all_same(y1, y2, y):
+            self.moveto(x, y, savepoint=False)
+        else:
+            for t in range(1, res + 1):
+                bx = int(cubicbezier(t / res, 0, x1, x2, x))
+                by = int(cubicbezier(t / res, 0, y1, y2, y))
+                bx += start[0]
+                by += start[1]
+                self.lineto(bx, by)
+        self.controlpoint = (x2 + start[0], y2 + start[1])
 
     def scurveto(self, x2, y2, x, y, res=100):
         x1, y1 = self._getconpointreflection()
@@ -297,22 +285,28 @@ class Plotter:
         self.curveto(x1, y1, x2 + sx, y2 + sy, x + sx, y + sy, res)
 
     def qcurveto(self, x1, y1, x, y, res=100):
-        start = self.getcoord()
-        for t in range(1, res + 1):
-            bx = int(quadbezier(t / res, start[0], x1, x))
-            by = int(quadbezier(t / res, start[1], y1, y))
-            self.lineto(bx, by)
-            self.controlpoint = (x1 + start[0], y1 + start[1])
+        if all_same(x1, x) or all_same(y1, y):
+            self.moveto(x, y, savepoint=False)
+        else:
+            start = self.getcoord()
+            for t in range(1, res + 1):
+                bx = int(quadbezier(t / res, start[0], x1, x))
+                by = int(quadbezier(t / res, start[1], y1, y))
+                self.lineto(bx, by)
+        self.controlpoint = (x1, y1)
 
     def qcurveto_rel(self, x1, y1, x, y, res=100):
         start = self.getcoord()
-        for t in range(1, res + 1):
-            bx = int(quadbezier(t / res, 0, x1, x))
-            by = int(quadbezier(t / res, 0, y1, y))
-            bx += start[0]
-            by += start[1]
-            self.lineto(bx, by)
-            self.controlpoint = (x1 + start[0], y1 + start[1])
+        if all_same(x1, x) or all_same(y1, y):
+            self.moveto(x, y, savepoint=False)
+        else:
+            for t in range(1, res + 1):
+                bx = int(quadbezier(t / res, 0, x1, x))
+                by = int(quadbezier(t / res, 0, y1, y))
+                bx += start[0]
+                by += start[1]
+                self.lineto(bx, by)
+        self.controlpoint = (x1 + start[0], y1 + start[1])
 
     def sqcurveto(self, x, y, res=100):
         x1, y1 = self._getconpointreflection()
@@ -331,8 +325,7 @@ class Plotter:
         hw.length = ctl(self.calpoint, self.m1, self.m2)
         hw.length = [int(hw.length[0]), int(hw.length[1])]
         self.calibrated = True
-        if self.getdebug():
-            print("Calibrated at " + str(self.calpoint))
+        self.printdbg("Calibrated at " + str(self.calpoint))
 
     def getcoord(self, offset=True):
         if self.calibrated:
@@ -354,7 +347,7 @@ class Plotter:
     def setpower(self, value):
         value = bool(int(value))
         if self.power == value:
-            if self.getdebug():
+            if self.args.verbose:
                 state = "OFF"
                 if value:
                     state = "ON"
@@ -362,7 +355,7 @@ class Plotter:
             return
         self.power = value
 
-        if self.getdebug():
+        if self.args.verbose:
             state = "OFF"
             if self.getpower():
                 state = "ON"
@@ -371,20 +364,6 @@ class Plotter:
         self.atxpower.loadr(value)
         self.left_engine.power(value)
         self.right_engine.power(value)
-
-    def getdebug(self):
-        return self.debug
-
-    def setdebug(self, value):
-        value = bool(int(value))
-        if self.debug == value:
-            return
-        self.debug = value
-
-        state = "disabled"
-        if value:
-            state = "enabled"
-        print("Debug mode " + state)
 
     def getexecpause(self):
         return self._execpause
@@ -395,7 +374,7 @@ class Plotter:
             return
         self._execpause = value
 
-        if self.getdebug():
+        if self.args.verbose:
             if value:
                 print("Paused")
             else:
@@ -436,6 +415,7 @@ class Plotter:
         for c in cmdlist:
             cmdname = c[0]
             c_str = (str(c[0]) + " " + str(c[1])).strip()
+            self.printv("{}: {}".format(cmdlist.index(c) + 1, c_str))
 
             if len(cmdname) > 1:
                 cmdname = cmdname.upper()
@@ -466,9 +446,17 @@ class Plotter:
             self.poweroffthread.restart()
 
     def shutdown(self):
-        if not self.prop.no_state:
+        if not self.args.no_state:
             self.savestate()
         self.setpower(False)
+
+    def printdbg(self, *objects, sep='', end='\n', file=None, flush=False):
+        if self.args.debug:
+            print(*objects, sep=sep, end=end, file=file, flush=flush)
+
+    def printv(self, *objects, sep='', end='\n', file=None, flush=False):
+        if self.args.verbose:
+            print(*objects, sep=sep, end=end, file=file, flush=flush)
 
     class PowerOffThread(Thread):
         _cancelled = False

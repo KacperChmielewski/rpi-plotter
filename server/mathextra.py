@@ -53,6 +53,10 @@ def cubicbezier(t, *w):
     return w[0]*mt3 + 3*w[1]*mt2*t + 3*w[2]*mt*t2 + w[3]*t3
 
 
+def all_same(*items):
+    return all(x == items[0] for x in items)
+
+
 class Point:
     def __init__(self, x=0, y=0):
         self.x = x

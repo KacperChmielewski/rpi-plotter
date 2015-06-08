@@ -21,17 +21,23 @@ namespace RPiPlotter.Windows
             previewWindow.Hide();
             this.SetupCommandTreeView();
             this.LoadIcons();
+            //var configuration = System.Configuration.ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
+
         }
 
         void SetupCommandTreeView()
         {
-            commandListStore = new ListStore(typeof(Gdk.Pixbuf), typeof(string), typeof(string), typeof(bool));
+            commandListStore = new ListStore(typeof(int), typeof(Gdk.Pixbuf), typeof(string), typeof(string));
             commandTreeView.Model = commandListStore;
+            var wrapCell = new CellRendererText()
+            {
+                WrapMode = Pango.WrapMode.Word
+            };
 
             // Add the columns to the TreeView
-            commandTreeView.AppendColumn("Status", new CellRendererPixbuf(), "pixbuf", 0);
-            commandTreeView.AppendColumn("Command", new CellRendererText(), "text", 1);
-            commandTreeView.AppendColumn("Time", new CellRendererText(), "text", 2);
+            commandTreeView.AppendColumn("Status", new CellRendererPixbuf(), "pixbuf", 1);
+            commandTreeView.AppendColumn("Command", wrapCell, "text", 2);
+            commandTreeView.AppendColumn("Time", new CellRendererText(), "text", 3);
         }
 
         void LoadIcons()
@@ -56,9 +62,13 @@ namespace RPiPlotter.Windows
         void SendCommand(string command)
         {
             command = command.Trim();
-            connector.Send(command);
-            var iter = commandListStore.AppendValues(null, command);
-            commandTreeView.ScrollToCell(commandListStore.GetPath(iter), commandTreeView.Columns[0], true, 0, 0);
+            int index = connector.Send(command);
+            if (index != -1)
+            {
+                var iter = commandListStore.AppendValues(index, null, command);
+                commandTreeView.ScrollToCell(commandListStore.GetPath(iter), commandTreeView.Columns[0], true, 0, 0);
+            }
+
         }
 
         void DisconnectUIChange()
@@ -168,7 +178,7 @@ namespace RPiPlotter.Windows
             var index = 0;
             foreach (object[] row in commandListStore)
             {
-                if (e.Command.Equals(row[1]) && row[0] == executingPixbuf)
+                if (e.CommandIndex.Equals(row[0]) && row[1] == executingPixbuf)
                 {
                     break;
                 }
@@ -177,7 +187,7 @@ namespace RPiPlotter.Windows
             TreeIter iter;
             if (commandListStore.GetIterFromString(out iter, index.ToString()))
             {
-                commandListStore.SetValue(iter, 0, errorPixbuf);
+                commandListStore.SetValue(iter, 1, errorPixbuf);
 
                 if (previewWindow != null)
                     previewWindow.ExecutingPathData = "";
@@ -185,9 +195,9 @@ namespace RPiPlotter.Windows
             commandListStore.GetIterFirst(out iter);
             do
             {
-                if (commandListStore.GetValue(iter, 0) == null)
+                if (commandListStore.GetValue(iter, 1) == null)
                 {
-                    commandListStore.SetValue(iter, 0, errorPixbuf);
+                    commandListStore.SetValue(iter, 1, errorPixbuf);
                 }
             }
             while (commandListStore.IterNext(ref iter));
@@ -209,7 +219,7 @@ namespace RPiPlotter.Windows
             var index = 0;
             foreach (object[] row in commandListStore)
             {
-                if (e.Command.Equals(row[1]) && row[0] == executingPixbuf)
+                if (e.CommandIndex.Equals(row[0]) && row[1] == executingPixbuf)
                 {
                     break;
                 }
@@ -218,13 +228,12 @@ namespace RPiPlotter.Windows
             TreeIter iter;
             if (commandListStore.GetIterFromString(out iter, index.ToString()))
             {
-                commandListStore.SetValue(iter, 0, donePixbuf);
-                commandListStore.SetValue(iter, 2, e.ExecutionTime);
-                commandListStore.SetValue(iter, 3, true);
+                commandListStore.SetValue(iter, 1, donePixbuf);
+                commandListStore.SetValue(iter, 3, e.ExecutionTime);
 
                 if (previewWindow != null)
                 {
-                    string command = commandListStore.GetValue(iter, 1) as string;
+                    string command = commandListStore.GetValue(iter, 2) as string;
                     Regex.Replace(command, @"\s*[A-Za-z]{2,}\s*[\d\W]*", "");
                     previewWindow.PathData += " " + command;
                 }
@@ -246,7 +255,7 @@ namespace RPiPlotter.Windows
             var index = 0;
             foreach (object[] row in commandListStore)
             {
-                if (e.Command.Equals(row[1]) && row[0] == null)
+                if (e.CommandIndex.Equals(row[0]) && row[1] == null)
                 {
                     break;
                 }
@@ -255,11 +264,11 @@ namespace RPiPlotter.Windows
             TreeIter iter;
             if (commandListStore.GetIterFromString(out iter, index.ToString()))
             {
-                commandListStore.SetValue(iter, 0, executingPixbuf);
+                commandListStore.SetValue(iter, 1, executingPixbuf);
 
                 if (previewWindow != null)
                 {
-                    string command = commandListStore.GetValue(iter, 1) as string;
+                    string command = commandListStore.GetValue(iter, 2) as string;
                     Regex.Replace(command, @"\s*[A-Za-z]{2,}\s*[\d\W]*", "");
                     previewWindow.ExecutingPathData = command;
                 }
@@ -288,9 +297,9 @@ namespace RPiPlotter.Windows
         {
             TreeIter iter;
             commandListStore.GetIter(out iter, args.Path);
-            if ((bool)commandListStore.GetValue(iter, 3) == true)
+            if (commandListStore.GetValue(iter, 1) == donePixbuf)
             {
-                SendCommand((string)commandListStore.GetValue(iter, 1));
+                SendCommand((string)commandListStore.GetValue(iter, 2));
             }
 
         }
@@ -329,7 +338,7 @@ namespace RPiPlotter.Windows
 
         void OnPanicButtonClicked(object sender, EventArgs e)
         {
-            connector.Send("!PANIC");
+            connector.SendServerCommand("PANIC");
         }
 
         void OnCommandEntryActivated(object sender, EventArgs e)
@@ -341,14 +350,14 @@ namespace RPiPlotter.Windows
         void OnPauseExecutionActionToggled(object sender, EventArgs e)
         {
             if (PauseExecutionAction.Active)
-                connector.Send("!PAUSE");
+                connector.SendServerCommand("PAUSE");
             else
-                connector.Send("!UNPAUSE");
+                connector.SendServerCommand("UNPAUSE");
         }
 
         void OnServerInfoActionActivated(object sender, EventArgs e)
         {
-            connector.Send("!INFO");
+            connector.SendServerCommand("INFO");
         }
     }
 }

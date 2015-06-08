@@ -6,14 +6,14 @@ namespace RPiPlotter.Net
     {
         public string ExecutionTime { get; private set; }
 
-        public CommandDoneEventArgs(string command, string executionTime, string message)
-            : base(command, message)
+        public CommandDoneEventArgs(int commandIndex, string executionTime, string message)
+            : base(commandIndex, message)
         {
             ExecutionTime = executionTime;
         }
 
-        public CommandDoneEventArgs(string command, string executionTime)
-            : this(command, executionTime, string.Empty)
+        public CommandDoneEventArgs(int commandIndex, string executionTime)
+            : this(commandIndex, executionTime, string.Empty)
         {
 
         }
