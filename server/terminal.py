@@ -21,6 +21,7 @@ def execute_command(command):
     except CommandError as ex:
         print("ERROR: " + ex.__str__(False), file=sys.stderr)
 
+
 def main():
     parser = argparse.ArgumentParser(add_help=False)
     mutual_term = parser.add_mutually_exclusive_group()

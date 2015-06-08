@@ -7,17 +7,17 @@ namespace RPiPlotter.Net
 {
     public class CommandEventArgs : EventArgs
     {
-        public string Command { get; private set; }
+        public int CommandIndex { get; private set; }
 
         public string Message { get; private set; }
 
-        public CommandEventArgs(string command)
+        public CommandEventArgs(int commandIndex)
         {
-            Command = command;
+            CommandIndex = commandIndex;
         }
 
-        public CommandEventArgs(string command, string message)
-            : this(command)
+        public CommandEventArgs(int commandIndex, string message)
+            : this(commandIndex)
         {
             Message = message;
         }

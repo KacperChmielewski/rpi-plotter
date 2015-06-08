@@ -38,7 +38,7 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
                 elif m == "!INFO":
                     self.sendinfo()
                 else:
-                    queue.put(m)
+                    queue.put(m.split('|'))
         except Exception as e:
             print(e)
         finally:
@@ -52,8 +52,7 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
         info = "Platform: " + platform.platform()
         uptime = datetime.datetime.now() - starttime
         info += "\nUptime: " + str(uptime)
-        if prop.verbose:
-            print(info)
+        plotter.printv(info)
         try:
             self.request.sendall(bytes("MSG|" + info + ';;', "utf-8"))
         except OSError:
@@ -84,7 +83,6 @@ def serve():
         print(str(ex) + " - {}:{}".format(host, str(port)), file=sys.stderr)
 
 
-
 def process():
     global starttime
     starttime = datetime.datetime.now()
@@ -96,9 +94,11 @@ def process():
             time.sleep(0.1)
             continue
 
-        command = queue.get()
+        index, command = queue.get()
         try:
-            socket.sendall(bytes("EXEC|" + command + ';;', "utf-8"))
+            execmsg = "EXEC|" + index
+            plotter.printdbg(execmsg)
+            socket.sendall(bytes(execmsg + ';;', "utf-8"))
         except OSError:
             continue
         # TODO: report position
@@ -121,16 +121,15 @@ def process():
             msg = str(msg).strip()
 
         if success:
-            info = "OK|{}|{}".format(command, "{:f} s".format(endtime - begintime))
+            info = "OK|{}|{}".format(index, "{:f} s".format(endtime - begintime))
         else:
-            info = "ERR|{}".format(command)
+            info = "ERR|{}".format(index)
             queue.queue.clear()
 
         if msg:
             info += "|" + msg
 
-        if prop.verbose:
-            print(info)
+        plotter.printdbg(info)
         try:
             socket.sendall(bytes(info + ';;', "utf-8"))
         except OSError:
@@ -141,7 +140,6 @@ def main():
     parser = argparse.ArgumentParser(description="TCP/IP server for remote controlling vPlotter", add_help=False)
     parser.add_argument("--host", default="0.0.0.0", help='address used for listening')
     parser.add_argument("--port", default=9882, help='port used for listening')
-    parser.add_argument("-v", "--verbose", default=False, help='verbose mode', dest='verbose', action='store_true')
     global plotter
     plotter = Plotter(parentparser=parser)
     global prop

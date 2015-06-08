@@ -111,7 +111,7 @@ namespace RPiPlotter.Windows
 			this.ControlModeAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("Control mode");
 			w1.Add (this.ControlModeAction, null);
 			this.SVGModeAction = new global::Gtk.RadioAction ("SVGModeAction", global::Mono.Unix.Catalog.GetString ("SVG mode"), null, null, 0);
-			this.SVGModeAction.Group = this.CommandModeAction.Group;
+			this.SVGModeAction.Group = this.ControlModeAction.Group;
 			this.SVGModeAction.Sensitive = false;
 			this.SVGModeAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("SVG mode");
 			this.SVGModeAction.Visible = false;
