@@ -174,18 +174,21 @@ class Plotter:
         gleft = int(left)
         gright = int(right)
         speed = float(speed)
-
         if gleft == 0 or gright == 0:
-            self.right_engine.move(gright, speed)
-        elif gright == 0:
+            # move
             self.left_engine.move(gleft, speed)
+            self.right_engine.move(gright, speed)
         else:
             rel = abs(float(gleft) / gright)
             done = 0
-
-            self.left_engine.direction = sign(gleft)
-            self.right_engine.direction = sign(gright)
-
+            ldir = sign(gleft)  # Left Direction
+            rdir = sign(gright)  # Right Direction
+            if ldir == -1:
+                ldir = 0
+            self.left_engine.direction = ldir
+            if rdir == -1:
+                rdir = 0
+            self.right_engine.direction = rdir
             for i in range(1, abs(gright) + 1):
                 if self._execstop:
                     self._execstop = False
