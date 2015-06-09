@@ -15,11 +15,11 @@ class CommandFileParser:
 
         cmds = fp.read()
         fp.close()
-        cmds = re.sub('\s+', ' ', cmds).strip()
+        cmds = re.sub(r'\s+', ' ', cmds).strip()
         try:
             for msg in self.plotter.execute(cmds):
                 if msg:
                     print(msg)
         except CommandError as ex:
-            print("ERROR: {}.".format(ex.__str__(False)), file=sys.stderr)
+            print("ERROR: {}.".format(str(ex)), file=sys.stderr)
             return

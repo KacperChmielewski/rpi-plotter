@@ -19,7 +19,7 @@ def execute_command(command):
             if msg:
                 print(msg)
     except CommandError as ex:
-        print("ERROR: " + ex.__str__(False), file=sys.stderr)
+        print("ERROR: " + str(ex), file=sys.stderr)
 
 
 def main():

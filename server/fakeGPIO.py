@@ -8,7 +8,7 @@ def setup(*args):
 
 
 def output(*args):
-    sleep(0.001)
+    sleep(0.0001)
 
 
 def setwarnings(*args):

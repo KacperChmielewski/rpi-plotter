@@ -256,17 +256,21 @@ class Plotter:
 
     def curveto(self, *points, relative=False):
         start = self.getcoord()
-        grouped_points = [(points[i], points[i + 1]) for i in range(0, len(points), 2)]  # group to tuples
+        grp_points = [(points[i], points[i + 1]) for i in range(0, len(points), 2)]  # group to tuples
         if relative:
-            grouped_points = [(p[0] + start[0], p[1] + start[1]) for p in grouped_points]
+            grp_points = [(p[0] + start[0], p[1] + start[1]) for p in grp_points]
 
-        grouped_points.insert(0, start)  # add start point
+        if all(p[0] == grp_points[0][0] for p in grp_points) or all(p[1] == grp_points[1][1] for p in grp_points):
+            self.moveto(grp_points[0][0], grp_points[0][1], savepoint=False)
+            return
+
+        grp_points.insert(0, start)  # add start point
 
         t = 0
         while t <= 1:
-            self.drawcurve(t, grouped_points)
+            self.drawcurve(t, grp_points)
             t += self.curve_acc
-        self.controlpoint = grouped_points[-2]
+        self.controlpoint = grp_points[-2]
 
     def curveto_rel(self, *points):
         self.curveto(*points, relative=True)
@@ -278,7 +282,7 @@ class Plotter:
         if relative:
             p1 = (p1[0] - coord[0], p1[1] - coord[1])
 
-        self.curveto(*(p1 + points))
+        self.curveto(*(p1 + points), relative=relative)
 
     def scurveto_rel(self, *points):
         self.scurveto(*points, relative=True)
@@ -366,10 +370,10 @@ class Plotter:
         self.power = value
 
         if self.args.verbose:
-            state = "OFF"
+            state = "off"
             if self.getpower():
-                state = "ON"
-            print("Turning {} power and motors...".format(state))
+                state = "on"
+            print("POWER: " + state)
         self.atxpower.power(value)
         self.atxpower.loadr(value)
         self.left_engine.power(value)
@@ -424,7 +428,8 @@ class Plotter:
                 cmdargs = [int(float(x)) for x in cmdargs]
                 cmdargs = [cmdargs[i:i + action_argc] for i in range(0, cmdargs_len, action_argc)]
                 for x in cmdargs:
-                    c_str = "{} {}".format(cmdname, str(x).strip('[],'))
+                    c_str = "{} {}".format(cmdname, str(x).strip('[]'))
+                    c_str = re.sub(r',', '', c_str)
                     action_stack.append((c_str, action, x))
             else:
                 action_stack.append((c_str, action, None))
@@ -486,11 +491,8 @@ class CommandError(Exception):
         Exception.__init__(self)
         self.msg = str(msg)
 
-    def __str__(self, capital=True):
-        if capital:
-            return self.msg[0].upper() + self.msg[1:]
-        else:
-            return self.msg[0].lower() + self.msg[1:]
+    def __str__(self):
+        return self.msg[0] + self.msg[1:]
 
 
 class NotCalibratedError(CommandError):
