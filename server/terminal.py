@@ -3,8 +3,13 @@ import signal
 
 from plotter import *
 
+isprocessing = False
 
 def signal_handler(*args):
+    if isprocessing:
+        plotter.stopexecute()
+        return
+
     print('\nCtrl+C pressed, quitting...')
     if plotter:
         plotter.shutdown()
@@ -18,6 +23,8 @@ def execute_command(command):
         for msg in plotter.execute(command):
             if msg:
                 print(msg)
+    except ExecutionError as ex:
+        print("\n" + str(ex))
     except CommandError as ex:
         print("ERROR: " + str(ex), file=sys.stderr)
 
@@ -51,9 +58,13 @@ def main():
             plotter.shutdown()
         return
     print("Ready.")
+    global isprocessing
+    isprocessing = False
     while True:
         command = input("> ").strip()
+        isprocessing = True
         execute_command(command)
+        isprocessing = False
 
 if __name__ == "__main__":
     main()
