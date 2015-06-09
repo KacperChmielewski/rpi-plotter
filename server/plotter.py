@@ -424,18 +424,21 @@ class Plotter:
                 cmdargs = [int(float(x)) for x in cmdargs]
                 cmdargs = [cmdargs[i:i + action_argc] for i in range(0, cmdargs_len, action_argc)]
                 for x in cmdargs:
+                    c_str = "{} {}".format(cmdname, str(x).strip('[],'))
                     action_stack.append((c_str, action, x))
             else:
-                action_stack.append((c_str, action))
+                action_stack.append((c_str, action, None))
 
         self.poweroffthread.stop()
-        for a in action_stack:
+        counter = 1
+        for cmd, a, args in action_stack:
             if self.args.verbose:
-                print("{}: {}".format(action_stack.index(a) + 1, a[0]))
-            if len(a) == 3:
-                yield a[1](*a[2])
+                print("{}: {}".format(counter, cmd))
+                counter += 1
+            if args:
+                yield a(*args)
             else:
-                yield a[1]()
+                yield a()
 
         self.setseparator(True)
         self.poweroffthread.restart()
