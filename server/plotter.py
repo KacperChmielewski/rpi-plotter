@@ -50,7 +50,7 @@ class Plotter:
         self.power = False
         self._execpause, self._execstop = False, False
         self.startpoint, self.controlpoint = None, None
-        self.offset = None
+        self.offset = (0, 0)
         self.poweroff_interval = 15
 
         self.statepath = None
