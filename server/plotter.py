@@ -50,7 +50,7 @@ class Plotter:
         self.power = False
         self._execpause, self._execstop = False, False
         self.startpoint, self.controlpoint = None, None
-        self.calpoint = None
+        self.offset = None
         self.poweroff_interval = 15
 
         self.statepath = None
@@ -85,7 +85,9 @@ class Plotter:
                            'CAL': (self.calibrate, 2),
                            'COR': (self.getcoord, 0),
                            'LEN': (self.getlength, 0),
-                           'PWR': (self.setpower, 1)
+                           'PWR': (self.setpower, 1),
+                           'OFF': (self.setoffset, 0),
+                           'OFC': (self.clearoffset, 0)
         }
         if self.args.no_state:
             self.printv("Skipping state load...")
@@ -145,11 +147,11 @@ class Plotter:
                 p = config["Plotter"]
 
                 length = ast.literal_eval(p['Length'])
-                calpoint = ast.literal_eval(p['CalPoint'])
+                offset = ast.literal_eval(p['Offset'])
                 poweroff_interval = int(p['Poweroff interval'])
                 hw.length = length
-                self.calpoint = calpoint
-                if calpoint:
+                self.offset = offset
+                if length != [0, 0]:
                     self.calibrated = True
                 self.poweroff_interval = poweroff_interval
             except KeyError:
@@ -160,7 +162,7 @@ class Plotter:
         config = configparser.ConfigParser()
         config["Plotter"] = {
             'Length': str(hw.length),
-            'CalPoint': str(self.calpoint),
+            'Offset': str(self.offset),
             'Poweroff interval': self.poweroff_interval
         }
         with open(self.statepath, 'w') as configfile:
@@ -208,12 +210,12 @@ class Plotter:
             raise NotCalibratedError()
 
         if relative:
-            currentpos = self.getcoord(False)
+            currentpos = ltc(hw.length, self.m1, self.m2)
             x += currentpos[0]
             y += currentpos[1]
         else:
-            x += self.calpoint[0]
-            y += self.calpoint[1]
+            x += self.offset[0]
+            y += self.offset[1]
 
         if not self.startpoint:
             self._savestartpoint()
@@ -224,7 +226,8 @@ class Plotter:
         change = (int(destination[0] - hw.length[0]), int(destination[1] - hw.length[1]))
 
         self.setseparator(sep)
-
+        if change == (0, 0):
+            return
         self.printdbg("Strings change: " + str(change))
         self.move(change[0], change[1], self.speed)
         if savepoint:
@@ -335,19 +338,16 @@ class Plotter:
         self.separator.set(int(state))
 
     def calibrate(self, x, y):
-        self.calpoint = (int(x), int(y))
-        hw.length = ctl(self.calpoint, self.m1, self.m2)
+        p = (int(x), int(y))
+        hw.length = ctl(p, self.m1, self.m2)
         hw.length = [int(hw.length[0]), int(hw.length[1])]
         self.calibrated = True
-        self.printdbg("Calibrated at " + str(self.calpoint))
+        self.printdbg("Calibrated at " + str(p))
 
-    def getcoord(self, offset=True):
+    def getcoord(self):
         if self.calibrated:
             x, y = ltc(hw.length, self.m1, self.m2)
-            if offset:
-                return x - self.calpoint[0], y - self.calpoint[1]
-            else:
-                return x, y
+            return x - self.offset[0], y - self.offset[1]
         else:
             raise NotCalibratedError()
 
@@ -378,6 +378,12 @@ class Plotter:
         self.atxpower.loadr(value)
         self.left_engine.power(value)
         self.right_engine.power(value)
+
+    def setoffset(self):
+        self.offset = ltc(hw.length, self.m1, self.m2)
+
+    def clearoffset(self):
+        self.offset = (0, 0)
 
     # // Main execution command
 
