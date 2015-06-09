@@ -10,6 +10,10 @@ import sys
 from mathextra import *
 import hardware as hw
 
+RE_CMDARGS = re.compile('[\+\-\w\.]+')
+RE_CMD = re.compile(r'([A-Za-z]+)\s*((?:-?(\d((E|e)(\+|\-)\d+)?)*\.?(?:\s|,)*)*)')
+
+
 
 class Plotter:
     m1, m2 = [0, 0], [81013, 0]
@@ -310,6 +314,7 @@ class Plotter:
         y1r = (-sinphi * (cx - x) + cosphi * (cy - y)) / 2
 
         _a = (x1r * x1r) / (rx * rx) + (y1r * y1r) / (ry * ry)
+
         if _a > 1:
             # No solution, scale ellipse up according to SVG standard
             sqrt_a = math.sqrt(_a)
@@ -323,7 +328,7 @@ class Plotter:
             else:
                 k = float(1)
 
-            k = math.sqrt((rx * rx * ry * ry) / ((rx * rx * y1r * y1r) + (ry * ry * x1r * x1r)) - float(1))
+            k *= math.sqrt((rx * rx * ry * ry) / ((rx * rx * y1r * y1r) + (ry * ry * x1r * x1r)) - float(1))
             cxr = k * rx * y1r / ry
             cyr = -k * ry * x1r / rx
 
@@ -495,8 +500,7 @@ class Plotter:
                 formatlen = 15
             raise CommandError(command[0:formatlen] + " - incorrect format!")
 
-        cmdlist = re.findall(r'([A-Za-z]+)\s*((?:-?(\d((E|e)(\+|\-)\d+)?)*\.?(?:\s|,)*)*)',
-                             command)
+        cmdlist = RE_CMD.findall(command)
 
         if not cmdlist:
             raise CommandError(command + " - syntax error!")
@@ -514,7 +518,7 @@ class Plotter:
 
             action = cmdinfo[0]
             action_argc = cmdinfo[1]
-            cmdargs = re.findall(r'[\+\-\w\.]+', c[1].strip())
+            cmdargs = RE_CMDARGS.findall(c[1].strip())
             cmdargs_len = len(cmdargs)
 
             if cmdargs_len > 0 and action_argc == 0:

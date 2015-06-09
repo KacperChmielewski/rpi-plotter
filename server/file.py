@@ -15,7 +15,7 @@ class CommandFileParser:
 
         cmds = fp.read()
         fp.close()
-        cmds = re.sub(r'\s+', ' ', cmds).strip()
+        cmds = re.sub(r'(\s+)|(^#.*)', ' ', cmds, flags=re.MULTILINE).strip()
         try:
             for msg in self.plotter.execute(cmds):
                 if msg:
