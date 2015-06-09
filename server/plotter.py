@@ -15,6 +15,8 @@ class Plotter:
     m1, m2 = [0, 0], [81013, 0]
     spr = 200  # steps per revolution in full step mode
     ms = 16  # (1, 2, 4, 8, 16)
+    curve_acc = 0.01
+    speed = 1
     sr, atxpower, separator = None, None, None
     right_engine, left_engine = None, None
 
@@ -71,10 +73,10 @@ class Plotter:
                            'c': (self.curveto_rel, 6),
                            'S': (self.scurveto, 4),
                            's': (self.scurveto_rel, 4),
-                           'Q': (self.qcurveto, 4),
-                           'q': (self.qcurveto_rel, 4),
-                           'T': (self.sqcurveto, 2),
-                           't': (self.sqcurveto_rel, 2),
+                           'Q': (self.curveto, 4),
+                           'q': (self.curveto_rel, 4),
+                           'T': (self.scurveto, 2),
+                           't': (self.scurveto_rel, 2),
                            # TODO: elliptical arc command
 
                            # Plotter
@@ -121,6 +123,11 @@ class Plotter:
             self.setpower(True)
         self.poweroffthread.start()
 
+    def shutdown(self):
+        if not self.args.no_state:
+            self.savestate()
+        self.setpower(False)
+
     def loadstate(self):
         if self.args.fresh_state or not os.path.isfile(self.statepath):
             self.printv("Creating new state file in " + self.statepath + " ...")
@@ -166,198 +173,156 @@ class Plotter:
             self.setpower(True)
         gleft = int(left)
         gright = int(right)
+        speed = float(speed)
+
         if gleft == 0 or gright == 0:
-            # move
-            self.left_engine.move(gleft, float(speed))
-            self.right_engine.move(gright, float(speed))
+            self.right_engine.move(gright, speed)
+        elif gright == 0:
+            self.left_engine.move(gleft, speed)
         else:
             rel = abs(float(gleft) / gright)
             done = 0
-            ldir = sign(gleft)  # Left Direction
-            rdir = sign(gright)  # Right Direction
-            if ldir == -1:
-                ldir = 0
-            self.left_engine.direction = ldir
-            if rdir == -1:
-                rdir = 0
-            self.right_engine.direction = rdir
+
+            self.left_engine.direction = sign(gleft)
+            self.right_engine.direction = sign(gright)
+
             for i in range(1, abs(gright) + 1):
                 if self._execstop:
                     self._execstop = False
                     raise ExecutionError()
                 while self.getexecpause():
                     time.sleep(0.1)
-                self.right_engine.move(1, float(speed))
+                self.right_engine.move(1, speed)
                 htbd = int(i * rel)  # steps which Has To Be Done
                 td = htbd - done  # steps To Do
-                self.left_engine.move(td, float(speed))
+                self.left_engine.move(td, speed)
                 done = htbd
 
-    def moveto(self, x, y, speed=1, sep=True, savepoint=True):
+    # // SVG Commands
+
+    def moveto(self, x, y, sep=True, savepoint=True, relative=False):
         if not self.calibrated:
             raise NotCalibratedError()
-        x += self.calpoint[0]
-        y += self.calpoint[1]
+
+        if relative:
+            currentpos = self.getcoord(False)
+            x += currentpos[0]
+            y += currentpos[1]
+        else:
+            x += self.calpoint[0]
+            y += self.calpoint[1]
+
         if not self.startpoint:
             self._savestartpoint()
         if self.controlpoint:
             self.controlpoint = None
-        self.setseparator(sep)
+
         destination = ctl([int(x), int(y)], self.m1, self.m2)
         change = (int(destination[0] - hw.length[0]), int(destination[1] - hw.length[1]))
-        self.printdbg("Strings change: " + str(change))
-        self.move(change[0], change[1], speed)
-        if savepoint:
-            self._savestartpoint()
 
-    def moveto_rel(self, x, y, speed=1, sep=True, savepoint=True):
-        if not self.calibrated:
-            raise NotCalibratedError()
         self.setseparator(sep)
-        currentpos = self.getcoord(False)
-        if not self.startpoint:
-            self.startpoint = currentpos
-        if self.controlpoint:
-            self.controlpoint = None
-        destination = ctl([currentpos[0] + int(x), currentpos[1] + int(y)], self.m1, self.m2)
-        change = (int(destination[0] - hw.length[0]), int(destination[1] - hw.length[1]))
+
         self.printdbg("Strings change: " + str(change))
-        self.move(change[0], change[1], speed)
+        self.move(change[0], change[1], self.speed)
         if savepoint:
             self._savestartpoint()
 
-    def lineto(self, x, y, speed=1):
-        self.moveto(x, y, speed, False, False)
+    def moveto_rel(self, x, y):
+        self.moveto(x, y, True, True, relative=True)
 
-    def lineto_rel(self, x, y, speed=1):
-        self.moveto_rel(x, y, speed, False, False)
+    def lineto(self, x, y):
+        self.moveto(x, y, False, False)
 
-    def vertical(self, y, speed=1):
-        self.moveto(int(self.getcoord()[0]), y, speed, False, False)
+    def lineto_rel(self, x, y):
+        self.moveto(x, y, False, False, relative=True)
 
-    def vertical_rel(self, y, speed=1):
-        self.moveto_rel(0, y, speed, False, False)
+    def vertical(self, y):
+        self.moveto(int(self.getcoord()[0]), y, False, False)
 
-    def horizontal(self, x, speed=1):
-        self.moveto(x, int(self.getcoord()[1]), speed, False, False)
+    def vertical_rel(self, y):
+        self.moveto(0, y, False, False, relative=True)
 
-    def horizontal_rel(self, x, speed=1):
-        self.moveto_rel(x, 0, speed, False, False)
+    def horizontal(self, x):
+        self.moveto(x, int(self.getcoord()[1]), False, False)
 
-    def closepath(self, speed=1):
-        self.moveto(self.startpoint[0], self.startpoint[1], speed, False, False)
+    def horizontal_rel(self, x):
+        self.moveto(x, 0, False, False, relative=True)
 
-    # def curveto(self, x1, y1, x2, y2, x, y, res=100):
-    #     if all_same(x1, x2, x) or all_same(y1, y2, y):
-    #         self.moveto(x, y, savepoint=False)
-    #     else:
-    #         start = self.getcoord()
-    #         for t in range(1, res + 1):
-    #             bx = int(cubicbezier(t / res, start[0], x1, x2, x))
-    #             by = int(cubicbezier(t / res, start[1], y1, y2, y))
-    #             self.lineto(bx, by)
-    #     self.controlpoint = (x2, y2)
+    def closepath(self):
+        self.moveto(self.startpoint[0], self.startpoint[1], False, False)
 
-    def curveto(self, x1, y1, x2, y2, x, y):
+    def curveto(self, *points, relative=False):
+        start = self.getcoord()
+        grouped_points = [(points[i], points[i + 1]) for i in range(0, len(points), 2)]  # group to tuples
+        if relative:
+            grouped_points = [(p[0] + start[0], p[1] + start[1]) for p in grouped_points]
+
+        grouped_points.insert(0, start)  # add start point
+
         t = 0
         while t <= 1:
-            self.drawcurve(t, (self.getcoord(), (x1, y1), (x2, y2), (x, y)))
-            t += 0.01
-        self.controlpoint = (x2, y2)
+            self.drawcurve(t, grouped_points)
+            t += self.curve_acc
+        self.controlpoint = grouped_points[-2]
 
-    def curveto_rel(self, x1, y1, x2, y2, x, y):
-        raise NotImplementedError()
+    def curveto_rel(self, *points):
+        self.curveto(*points, relative=True)
 
-    def scurveto(self, x2, y2, x, y):
-        raise NotImplementedError()
+    def scurveto(self, *points, relative=False):
+        coord = self.getcoord()
+        p1 = self._getconpointreflection(coord)
 
-    def scurveto_rel(self, x2, y2, x, y):
-        raise NotImplementedError()
+        if relative:
+            p1 = (p1[0] - coord[0], p1[1] - coord[1])
 
-    def qcurveto(self, x1, y1, x, y):
-        t = 0
-        while t <= 1:
-            self.drawcurve(t, (self.getcoord(), (x1, y1), (x, y)))
-            t += 0.01
-        self.controlpoint = (x1, y1)
+        self.curveto(*(p1 + points))
 
-    def qcurveto_rel(self, x1, y1, x, y):
-        raise NotImplementedError()
+    def scurveto_rel(self, *points):
+        self.scurveto(*points, relative=True)
 
-    def sqcurveto(self, x, y):
-        raise NotImplementedError()
-
-    def sqcurveto_rel(self, x, y):
-        raise NotImplementedError()
-
-    # def curveto_rel(self, x1, y1, x2, y2, x, y, res=100):
-    #     start = self.getcoord()
-    #     if all_same(x1, x2, x) or all_same(y1, y2, y):
-    #         self.moveto(x, y, savepoint=False)
-    #     else:
-    #         for t in range(1, res + 1):
-    #             bx = int(cubicbezier(t / res, 0, x1, x2, x))
-    #             by = int(cubicbezier(t / res, 0, y1, y2, y))
-    #             bx += start[0]
-    #             by += start[1]
-    #             self.lineto(bx, by)
-    #     self.controlpoint = (x2 + start[0], y2 + start[1])
-    #
-    # def scurveto(self, x2, y2, x, y, res=100):
-    #     x1, y1 = self._getconpointreflection()
-    #     self.curveto(x1, y1, x2, y2, x, y, res)
-    #
-    # def scurveto_rel(self, x2, y2, x, y, res=100):
-    #     start = self.getcoord()
-    #     sx = start[0]
-    #     sy = start[1]
-    #     x1, y1 = self._getconpointreflection()
-    #     self.curveto(x1, y1, x2 + sx, y2 + sy, x + sx, y + sy, res)
-    #
-    # def qcurveto(self, x1, y1, x, y, res=100):
-    #     if all_same(x1, x) or all_same(y1, y):
-    #         self.moveto(x, y, savepoint=False)
-    #     else:
-    #         start = self.getcoord()
-    #         for t in range(1, res + 1):
-    #             bx = int(quadbezier(t / res, start[0], x1, x))
-    #             by = int(quadbezier(t / res, start[1], y1, y))
-    #             self.lineto(bx, by)
-    #     self.controlpoint = (x1, y1)
-    #
-    # def qcurveto_rel(self, x1, y1, x, y, res=100):
-    #     start = self.getcoord()
-    #
-    #     if all_same(x1, x) or all_same(y1, y):
-    #         self.moveto(x, y, savepoint=False)
-    #     else:
-    #         for t in range(1, res + 1):
-    #             bx = int(quadbezier(t / res, 0, x1, x))
-    #             by = int(quadbezier(t / res, 0, y1, y))
-    #             bx += start[0]
-    #             by += start[1]
-    #             self.lineto(bx, by)
-    #     self.controlpoint = (x1 + start[0], y1 + start[1])
-    #
-    # def sqcurveto(self, x, y, res=100):
-    #     x1, y1 = self._getconpointreflection()
-    #     self.qcurveto(x1, y1, x, y, res)
-    #
-    # def sqcurveto_rel(self, x, y, res=100):
-    #     start = self.getcoord()
-    #     x1, y1 = self._getconpointreflection()
-    #     self.qcurveto(x1, y1, x + start[0], y + start[1], res)
+    # // Helper methods
 
     def drawcurve(self, t, points):
         if len(points) == 1:
             self.lineto(points[0][0], points[0][1])
-        else:
-            newpoints = []
-            for i in range(0, len(points) - 1):
-                x = (1 - t) * points[i][0] + t * points[i + 1][0]
-                y = (1 - t) * points[i][1] + t * points[i + 1][1]
-                newpoints.append((x, y))
-            self.drawcurve(t, newpoints)
+            return
+
+        newpoints = []
+        for i in range(0, len(points) - 1):
+            x = (1 - t) * points[i][0] + t * points[i + 1][0]
+            y = (1 - t) * points[i][1] + t * points[i + 1][1]
+            newpoints.append((x, y))
+        self.drawcurve(t, newpoints)
+
+    def getexecpause(self):
+        return self._execpause
+
+    def setexecpause(self, value):
+        value = bool(int(value))
+        if self._execpause == value:
+            return
+        self._execpause = value
+
+        if self.args.verbose:
+            if value:
+                print("Paused")
+            else:
+                print("Unpaused")
+
+    def stopexecute(self):
+        self._execstop = True
+
+    def _savestartpoint(self):
+        self.startpoint = self.getcoord()
+
+    def _getconpointreflection(self, current=None):
+        if not current:
+            current = self.getcoord()
+        x = current[0] + (current[0] - self.controlpoint[0])
+        y = current[1] + (current[1] - self.controlpoint[1])
+        return x, y
+
+    # // Plotter commands
 
     def setseparator(self, state):
         self.separator.set(int(state))
@@ -407,36 +372,12 @@ class Plotter:
         self.left_engine.power(value)
         self.right_engine.power(value)
 
-    def getexecpause(self):
-        return self._execpause
-
-    def setexecpause(self, value):
-        value = bool(int(value))
-        if self._execpause == value:
-            return
-        self._execpause = value
-
-        if self.args.verbose:
-            if value:
-                print("Paused")
-            else:
-                print("Unpaused")
-
-    def stopexecute(self):
-        self._execstop = True
-
-    def _savestartpoint(self):
-        self.startpoint = self.getcoord()
-
-    def _getconpointreflection(self):
-        current = self.getcoord()
-        x = current[0] + (current[0] - self.controlpoint[0])
-        y = current[1] + (current[1] - self.controlpoint[1])
-        return x, y
+    # // Main execution command
 
     def execute(self, command):
         """:type command: str"""
-        self._execstop = False
+        if self._execstop:
+            self._execstop = False
         command = command.strip()
         if len(command) == 0:
             return
@@ -454,10 +395,10 @@ class Plotter:
         if not cmdlist:
             raise CommandError(command + " - syntax error!")
 
+        action_stack = []
         for c in cmdlist:
             cmdname = c[0]
             c_str = (str(c[0]) + " " + str(c[1])).strip()
-            self.printv("{}: {}".format(cmdlist.index(c) + 1, c_str))
 
             if len(cmdname) > 1:
                 cmdname = cmdname.upper()
@@ -476,21 +417,27 @@ class Plotter:
                     or (action_argc == 1 and cmdargs_len > 1):
                 raise CommandError(c_str + " - incorrect number of parameters!")
 
-            self.poweroffthread.stop()
             if cmdargs_len > 0:
                 cmdargs = [int(float(x)) for x in cmdargs]
                 cmdargs = [cmdargs[i:i + action_argc] for i in range(0, cmdargs_len, action_argc)]
                 for x in cmdargs:
-                    yield action(*x)
+                    action_stack.append((c_str, action, x))
             else:
-                yield action()
-            self.setseparator(True)
-            self.poweroffthread.restart()
+                action_stack.append((c_str, action))
 
-    def shutdown(self):
-        if not self.args.no_state:
-            self.savestate()
-        self.setpower(False)
+        self.poweroffthread.stop()
+        for a in action_stack:
+            if self.args.verbose:
+                print("{}: {}".format(action_stack.index(a) + 1, a[0]))
+            if len(a) == 3:
+                yield a[1](*a[2])
+            else:
+                yield a[1]()
+
+        self.setseparator(True)
+        self.poweroffthread.restart()
+
+    # // Utility commands
 
     def printdbg(self, *objects, sep='', end='\n', file=None):
         if self.args.debug:

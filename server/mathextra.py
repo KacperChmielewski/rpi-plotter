@@ -35,29 +35,3 @@ def ltc(l, m1p, m2p):
     pa = math.cos(rgamma) * l[0]
     pb = math.sqrt(l[0] ** 2 - pa ** 2)
     return [round(pb + m1p[0], nround), round(pa + m1p[1], nround)]
-
-
-def quadbezier(t, *w):
-    t2 = t * t
-    mt = 1-t
-    mt2 = mt * mt
-    return w[0]*mt2 + w[1]*2*mt*t + w[2]*t2
-
-
-def cubicbezier(t, *w):
-    t2 = t * t
-    t3 = t2 * t
-    mt = 1-t
-    mt2 = mt * mt
-    mt3 = mt2 * mt
-    return w[0]*mt3 + 3*w[1]*mt2*t + 3*w[2]*mt*t2 + w[3]*t3
-
-
-def all_same(*items):
-    return all(x == items[0] for x in items)
-
-
-class Point:
-    def __init__(self, x=0, y=0):
-        self.x = x
-        self.y = y

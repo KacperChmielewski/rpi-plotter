@@ -120,9 +120,7 @@ class A4988:
         t = 1.0 / (self.spr * self.ms * speed) / 2
 
         # length update
-        steps = abs(steps)
-        if self._direction == 0:
-            steps *= -1
+        steps = abs(steps) * self._direction
         length[self.side] += steps
 
         for i in range(abs(steps)):
@@ -160,14 +158,16 @@ class Servo:
         if self.state == status:
             return True
         if status:
-            for i in range(100):
-                self.pwm.start(i * self.pwmfactor + self.off)
-                sleep(0.01)
+            facstate = self.pwmfactor + self.off
         else:
-            for i in range(100):
-                self.pwm.start(i * self.pwmfactor * -1 + self.on)
-                sleep(0.01)
+            facstate = self.pwmfactor * -1 + self.on
+
+        for i in range(100):
+            self.pwm.start(i * facstate)
+            sleep(0.01)
+
         self.state = status
+
 
 class EngineSpeedError(Exception):
     def __init__(self, speed):

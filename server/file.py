@@ -1,5 +1,6 @@
 from plotter import *
 import sys
+import re
 
 
 class CommandFileParser:
@@ -11,17 +12,14 @@ class CommandFileParser:
     def execute(self, fp):
         if not self.plotter:
             raise Exception("No plotter instance passed!")
-        cmds = fp.read().split('\n')
+
+        cmds = fp.read()
         fp.close()
-        counter = 1
-        for cmd in cmds:
-            if self.plotter.getdebug():
-                print(cmd)
-            try:
-                for msg in self.plotter.execute(cmd):
-                    if msg:
-                        print(msg)
-            except CommandError as ex:
-                print("ERROR: {}, line {}.".format(ex.__str__(False), counter), file=sys.stderr)
-                return
-            counter += 1
+        cmds = re.sub('\s+', ' ', cmds).strip()
+        try:
+            for msg in self.plotter.execute(cmds):
+                if msg:
+                    print(msg)
+        except CommandError as ex:
+            print("ERROR: {}.".format(ex.__str__(False)), file=sys.stderr)
+            return
