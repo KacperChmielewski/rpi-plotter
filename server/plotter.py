@@ -77,7 +77,8 @@ class Plotter:
                            'q': (self.curveto_rel, 4),
                            'T': (self.scurveto, 2),
                            't': (self.scurveto_rel, 2),
-                           # TODO: elliptical arc command
+                           'A': (self.arc, 7),
+                           'a': (self.arc_rel, 7),
 
                            # Plotter
                            'SLP': (time.sleep, 1),
@@ -289,6 +290,98 @@ class Plotter:
 
     def scurveto_rel(self, *points):
         self.scurveto(*points, relative=True)
+
+    def arc(self, rx, ry, angle, fa, fs, x, y, cx=None, cy=None):
+        if not cx or not cy:
+            cx, cy = self.getcoord()
+        if cx == x and cy == y:
+            return
+        if rx == 0 or ry == 0:
+            self.lineto(x, y)
+
+        rx = abs(rx)
+        ry = abs(ry)
+
+        phi = math.radians(((angle % 360) + 360) % 360)
+        cosphi = math.cos(phi)
+        sinphi = math.sin(phi)
+
+        x1r = (cosphi * (cx - x) + sinphi * (cy - y)) / 2
+        y1r = (-sinphi * (cx - x) + cosphi * (cy - y)) / 2
+
+        _a = (x1r * x1r) / (rx * rx) + (y1r * y1r) / (ry * ry)
+        if _a > 1:
+            # No solution, scale ellipse up according to SVG standard
+            sqrt_a = math.sqrt(_a)
+            rx *= sqrt_a
+            ry *= sqrt_a
+            cxr = 0
+            cyr = 0
+        else:
+            if fa == fs:
+                k = float(-1)
+            else:
+                k = float(1)
+
+            k = math.sqrt((rx * rx * ry * ry) / ((rx * rx * y1r * y1r) + (ry * ry * x1r * x1r)) - float(1))
+            cxr = k * rx * y1r / ry
+            cyr = -k * ry * x1r / rx
+
+        cx = cosphi * cxr - sinphi * cyr + (cx + x) / 2
+        cy = sinphi * cxr + cosphi * cyr + (cy + y) / 2
+
+        sx = (x1r - cxr) / rx
+        sy = (y1r - cyr) / ry
+        tx = (-x1r - cxr) / rx
+        ty = (-y1r - cyr) / ry
+        phi1 = math.atan2(sy, sx)
+        phi_delta = (((math.atan2(ty, tx) - phi1) % (math.pi * 2)) + (math.pi * 2)) % (math.pi * 2)
+        if not fs:
+            phi_delta -= (math.pi * 2)
+
+        # One segment can not cover more that PI, less than PI/2 is
+        # recommended to avoid visible inaccuracies caused by rounding errors
+        segment_len = math.ceil(abs(phi_delta) / (math.pi * 2) * 4)
+
+        inc = phi_delta / segment_len
+        a = math.sin(inc) * (math.sqrt(4 + 3 * (math.tan(inc / 2)) ** 2) - 1) / 3
+
+        sinphi1 = math.sin(phi1)
+        cosphi1 = math.cos(phi1)
+
+        p1x = cx
+        p1y = cy
+        relq1x = a * (-rx * cosphi * sinphi1 - ry * sinphi * cosphi1)
+        relq1y = a * (-rx * sinphi * sinphi1 + ry * cosphi * cosphi1)
+
+        for i in range(0, segment_len):
+            eta = phi1 + (i + 1) * inc
+            sin_eta = math.sin(eta)
+            cos_eta = math.cos(eta)
+
+            p2x = cx + rx * cosphi * cos_eta - ry * sinphi * sin_eta
+            p2y = cy + rx * sinphi * cos_eta + ry * cosphi * sin_eta
+            relq2x = a * (-rx * cosphi * sin_eta - ry * sinphi * cos_eta)
+            relq2y = a * (-rx * sinphi * sin_eta + ry * cosphi * cos_eta)
+
+            if i == segment_len - 1:
+                p2x = x
+                p2y = y
+
+            self.curveto(p1x + relq1x, p1y + relq1y, p2x - relq2x, p2y - relq2y, p2x, p2y)
+            # parsePathCode(BEZIER_VERTEX)
+            # parsePathVertex(p1x + relq1x, p1y + relq1y)
+            # parsePathVertex(p2x - relq2x, p2y - relq2y)
+            # parsePathVertex(p2x, p2y)
+
+            p1x = p2x
+            relq1x = relq2x
+            p1y = p2y
+            relq1y = relq2y
+
+    def arc_rel(self, rx, ry, angle, fa, fs, x, y):
+        cx, cy = self.getcoord()
+        self.arc(rx, ry, angle, fa, fs, x + cx, y + cy, cx, cy)
 
     # // Helper methods
 
