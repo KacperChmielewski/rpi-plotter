@@ -16,10 +16,6 @@ class CommandFileParser:
         cmds = fp.read()
         fp.close()
         cmds = re.sub(r'(\s+)|(^#.*)', ' ', cmds, flags=re.MULTILINE).strip()
-        try:
-            for msg in self.plotter.execute(cmds):
-                if msg:
-                    print(msg)
-        except CommandError as ex:
-            print("ERROR: {}.".format(str(ex)), file=sys.stderr)
-            return
+        for msg in self.plotter.execute(cmds):
+            if msg:
+                yield msg

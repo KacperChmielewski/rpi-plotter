@@ -4,6 +4,8 @@ import signal
 from plotter import *
 
 isprocessing = False
+plotter = None
+logger = None
 
 def signal_handler(*args):
     if isprocessing:
@@ -11,8 +13,6 @@ def signal_handler(*args):
         return
 
     print('\nCtrl+C pressed, quitting...')
-    if plotter:
-        plotter.shutdown()
     sys.exit(0)
 
 
@@ -22,11 +22,11 @@ def execute_command(command):
     try:
         for msg in plotter.execute(command):
             if msg:
-                print(msg)
+                logger.info(msg)
     except ExecutionError as ex:
-        print("\n" + str(ex))
+        logger.warning(str(ex))
     except CommandError as ex:
-        print("ERROR: " + str(ex), file=sys.stderr)
+        logger.error(str(ex))
 
 
 def main():
@@ -35,6 +35,12 @@ def main():
     mutual_term.add_argument('-c', help="execute single command", metavar="<command>", dest='command', type=str)
     mutual_term.add_argument('-f', help="execute commands from file", metavar="<file>", dest='file',
                              type=argparse.FileType())
+    global logger
+    logger = logging.getLogger("terminal")
+    sh = logging.StreamHandler()
+    sh.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    logger.addHandler(sh)
+    logger.setLevel(logging.INFO)
 
     global plotter
     plotter = Plotter(parser)
@@ -43,7 +49,6 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     termargs = parser.parse_known_args()[0]
     if termargs.command:
-        print(termargs.command)
         try:
             execute_command(termargs.command)
         finally:
@@ -54,6 +59,8 @@ def main():
 
         try:
             file.CommandFileParser(plotter, termargs.file)
+        except CommandError as ex:
+            logger.error(str(ex))
         finally:
             plotter.shutdown()
         return
@@ -67,4 +74,8 @@ def main():
         isprocessing = False
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        if plotter:
+            plotter.shutdown()

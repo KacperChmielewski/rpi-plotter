@@ -4,6 +4,7 @@ import socket as sock
 import datetime
 import threading
 import signal
+import logging
 import sys
 
 from plotter import *
@@ -12,13 +13,15 @@ server, socket = None, None
 prop = None
 queue = Queue()
 starttime = None
+logger = None
+plotter = None
 
 
 class TCPPlotterListener(socketserver.BaseRequestHandler):
     def handle(self):
         global socket
         try:
-            print("{}:{} connected!".format(self.client_address[0], self.client_address[1]))
+            logger.info("{}:{} connected!".format(self.client_address[0], self.client_address[1]))
             socket = self.request
             while True:
                 data = socket.recv(8192)
@@ -27,7 +30,7 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
                 if not data:
                     break
                 m = str(data, 'ascii')
-                print("{} wrote: {}".format(self.client_address[0], m))
+                logger.info("{} wrote: {}".format(self.client_address[0], m))
 
                 if m == "!PANIC":
                     plotter.stopexecute()
@@ -40,11 +43,11 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
                 else:
                     queue.put(m.split('|'))
         except Exception as e:
-            print(e)
+            logger.error(str(e))
         finally:
             queue.queue.clear()
             socket.close()
-            print(self.client_address[0] + " disconnected!")
+            logger.info(self.client_address[0] + " disconnected!")
 
     def sendinfo(self):
         import platform
@@ -52,7 +55,7 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
         info = "Platform: " + platform.platform()
         uptime = datetime.datetime.now() - starttime
         info += "\nUptime: " + str(uptime)
-        plotter.printv(info)
+        logger.debug(info)
         try:
             self.request.sendall(bytes("MSG|" + info + ';;', "utf-8"))
         except OSError:
@@ -66,8 +69,6 @@ def signal_handler(*args):
             socket.shutdown(sock.SHUT_RDWR)
         except sock.error:
             pass
-    if plotter:
-        plotter.shutdown()
     sys.exit(0)
 
 
@@ -77,10 +78,10 @@ def serve():
     try:
         server = socketserver.TCPServer((host, port), TCPPlotterListener)
 
-        print("Listening on {}:{}".format(host, str(port)))
+        logger.info("Listening on {}:{}".format(host, str(port)))
         server.serve_forever()
     except OSError as ex:
-        print(str(ex) + " - {}:{}".format(host, str(port)), file=sys.stderr)
+        logger.error(str(ex) + " - {}:{}".format(host, str(port)))
 
 
 def process():
@@ -97,7 +98,7 @@ def process():
         index, command = queue.get()
         try:
             execmsg = "EXEC|" + index
-            plotter.printdbg(execmsg)
+            logger.debug(execmsg)
             socket.sendall(bytes(execmsg + ';;', "utf-8"))
         except OSError:
             continue
@@ -110,10 +111,13 @@ def process():
             for result in plotter.execute(command):
                 if result:
                     msg += str(result) + '\n'
+                    logger.info(str(result))
             success = True
         except NotCalibratedError as ex:
+            logger.error(str(ex))
             msg = str(ex) + " Use CAL <x>,<y>"
         except CommandError as ex:
+            logger.error(str(ex))
             msg = str(ex)
         endtime = time.time()
 
@@ -129,7 +133,7 @@ def process():
         if msg:
             info += "|" + msg
 
-        plotter.printdbg(info)
+        logger.debug(info)
         try:
             socket.sendall(bytes(info + ';;', "utf-8"))
         except OSError:
@@ -138,17 +142,31 @@ def process():
 
 def main():
     parser = argparse.ArgumentParser(description="TCP/IP server for remote controlling vPlotter", add_help=False)
-    parser.add_argument("--host", default="0.0.0.0", help='address used for listening')
-    parser.add_argument("--port", default=9882, help='port used for listening')
+    parser.add_argument("--host", default="0.0.0.0", help='server address')
+    parser.add_argument("--port", default=9882, help='server port')
     global plotter
     plotter = Plotter(parentparser=parser)
     global prop
     prop = parser.parse_known_args()[0]
 
-    print("-= vPlotter Network Listener =-\nCtrl+C - terminate\n")
+    print("-= vPlotter Server =-\nCtrl+C - terminate\n")
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
+
+    global logger
+    logger = logging.getLogger("vPlotter.server")
+    if not plotter.args.no_logging:
+        fh = logging.FileHandler("server.log")
+        fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s: %(message)s"))
+        fh.setLevel(logging.INFO)
+        logger.addHandler(fh)
+
+    # logger.addHandler(logging.StreamHandler())
     process()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        if plotter:
+            plotter.shutdown()
