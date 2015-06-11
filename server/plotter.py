@@ -218,17 +218,23 @@ class Plotter:
             self.left_engine.direction = ldir
             if rdir == -1:
                 rdir = 0
+            r = 0
+            l = 0
             self.right_engine.direction = rdir
             for i in range(1, abs(gright) + 1):
                 if self._execstop:
                     self._execstop = False
+                    hw.length[0] += r
+                    hw.length[1] += l
                     raise ExecutionError()
                 while self.getexecpause():
                     time.sleep(0.1)
                 self.right_engine.move(1, speed)
+                r += 1 * rdir
                 htbd = int(i * rel)  # steps which Has To Be Done
                 td = htbd - done  # steps To Do
                 self.left_engine.move(td, speed)
+                l += td * ldir
                 done = htbd
 
         # length update
