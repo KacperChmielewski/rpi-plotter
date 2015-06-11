@@ -22,9 +22,9 @@ def execute_command(command):
     try:
         for msg in plotter.execute(command):
             if msg:
-                logger.info(msg)
+                logger.warning(msg)
     except ExecutionError as ex:
-        logger.warning(str(ex))
+        logger.error(str(ex))
     except CommandError as ex:
         logger.error(str(ex))
 
@@ -36,11 +36,7 @@ def main():
     mutual_term.add_argument('-f', help="execute commands from file", metavar="<file>", dest='file',
                              type=argparse.FileType())
     global logger
-    logger = logging.getLogger("terminal")
-    sh = logging.StreamHandler()
-    sh.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-    logger.addHandler(sh)
-    logger.setLevel(logging.INFO)
+    logger = logging.getLogger("vPlotter.terminal")
 
     global plotter
     plotter = Plotter(parser)
@@ -49,20 +45,17 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     termargs = parser.parse_known_args()[0]
     if termargs.command:
-        try:
-            execute_command(termargs.command)
-        finally:
-            plotter.shutdown()
+        execute_command(termargs.command)
         return
     elif termargs.file:
         import file
 
         try:
-            file.CommandFileParser(plotter, termargs.file)
+            for msg in file.CommandFileParser(plotter).execute(termargs.file):
+                if msg:
+                    logger.info(msg)
         except CommandError as ex:
             logger.error(str(ex))
-        finally:
-            plotter.shutdown()
         return
     print("Ready.")
     global isprocessing

@@ -19,7 +19,7 @@ class Plotter:
     m1, m2 = [0, 0], [81013, 0]
     spr = 200  # steps per revolution in full step mode
     ms = 16  # (1, 2, 4, 8, 16)
-    curve_acc = 0.01
+    curve_acc = 0.025
     speed = 1
     sr, atxpower, separator = None, None, None
     right_engine, left_engine = None, None
@@ -58,8 +58,10 @@ class Plotter:
         self.power = False
         self._execpause, self._execstop = False, False
         self.startpoint, self.controlpoint = None, None
+        # self.prevpos = None
         self.offset = (0, 0)
         self.poweroff_interval = 15
+        self.frac_change = [0, 0]
 
         self.statepath = None
 
@@ -235,29 +237,36 @@ class Plotter:
         if not self.calibrated:
             raise NotCalibratedError()
 
+        currentpos = ltc(hw.length, self.m1, self.m2)
         if relative:
-            currentpos = ltc(hw.length, self.m1, self.m2)
             x += currentpos[0]
             y += currentpos[1]
         else:
             x += self.offset[0]
             y += self.offset[1]
 
+        self.setseparator(sep)
+        x, y = round(x), round(y)
+        dest = (x, y)
+
+        # if self.prevpos and self.prevpos == dest:
+        #     self.logger.debug("Skipping move to " + str(dest))
+
         if not self.startpoint:
-            self._savestartpoint()
+            self.startpoint = currentpos
         if self.controlpoint:
             self.controlpoint = None
 
-        destination = ctl([int(x), int(y)], self.m1, self.m2)
+        destination = ctl(dest, self.m1, self.m2)
         change = (int(destination[0] - hw.length[0]), int(destination[1] - hw.length[1]))
-
-        self.setseparator(sep)
         if change == (0, 0):
             return
-        self.logger.debug("Strings change: " + str(change))
+
+        self.logger.debug("Destination: {}, strings change: {}".format(dest, change))
         self.move(change[0], change[1], self.speed)
         if savepoint:
-            self._savestartpoint()
+            self.startpoint = dest
+            # self.prevpos = dest
 
     def moveto_rel(self, x, y):
         self.moveto(x, y, True, True, relative=True)
@@ -281,7 +290,10 @@ class Plotter:
         self.moveto(x, 0, False, False, relative=True)
 
     def closepath(self):
-        self.moveto(self.startpoint[0], self.startpoint[1], False, False)
+        if not self.startpoint:
+            raise CommandError("There is no start point!")
+        x, y = self.startpoint[0] - self.offset[0], self.startpoint[1] - self.offset[1]
+        self.moveto(x, y, False, False)
 
     def curveto(self, *points, relative=False):
         start = self.getcoord()
@@ -289,11 +301,11 @@ class Plotter:
         if relative:
             grp_points = [(p[0] + start[0], p[1] + start[1]) for p in grp_points]
 
-        if all(p[0] == grp_points[0][0] for p in grp_points) or all(p[1] == grp_points[1][1] for p in grp_points):
-            self.moveto(grp_points[0][0], grp_points[0][1], savepoint=False)
-            return
+        grp_points.insert(0, tuple([round(p) for p in start]))  # add start point
 
-        grp_points.insert(0, start)  # add start point
+        if pol(grp_points, 5):
+            self.lineto(grp_points[0][0], grp_points[0][1])
+            return
 
         t = 0
         while t <= 1:
@@ -440,9 +452,6 @@ class Plotter:
     def stopexecute(self):
         self._execstop = True
 
-    def _savestartpoint(self):
-        self.startpoint = self.getcoord()
-
     def _getconpointreflection(self, current=None):
         if not current:
             current = self.getcoord()
@@ -498,6 +507,9 @@ class Plotter:
     def setoffset(self):
         self.offset = ltc(hw.length, self.m1, self.m2)
         return "Offset set at " + str(self.offset)
+
+    def _getoffsetpoint(self, point):
+        return point[0] - self.offset[0], point[1] - self.offset[1]
 
     def clearoffset(self):
         self.offset = (0, 0)
