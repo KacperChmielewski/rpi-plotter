@@ -19,7 +19,7 @@ class Plotter:
     m1, m2 = [0, 0], [81013, 0]
     spr = 200  # steps per revolution in full step mode
     ms = 16  # (1, 2, 4, 8, 16)
-    curve_acc = 0.025
+    curve_acc = 0.01
     speed = 1
     sr, atxpower, separator = None, None, None
     right_engine, left_engine = None, None
@@ -231,6 +231,10 @@ class Plotter:
                 self.left_engine.move(td, speed)
                 done = htbd
 
+        # length update
+        hw.length[0] += gleft
+        hw.length[1] += gright
+
     # // SVG Commands
 
     def moveto(self, x, y, sep=True, savepoint=True, relative=False):
@@ -258,7 +262,16 @@ class Plotter:
             self.controlpoint = None
 
         destination = ctl(dest, self.m1, self.m2)
-        change = (int(destination[0] - hw.length[0]), int(destination[1] - hw.length[1]))
+        change = [destination[0] - hw.length[0], destination[1] - hw.length[1]]
+        for i in range(2):
+            if abs(self.frac_change[i]) > 1:
+                remnant = int(self.frac_change[i])
+                change[i] += remnant
+                self.frac_change[i] -= remnant
+        self.frac_change[0] += change[0] - int(change[0])
+        self.frac_change[1] += change[1] - int(change[1])
+
+        change = (int(change[0]), int(change[1]))
         if change == (0, 0):
             return
 

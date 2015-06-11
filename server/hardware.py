@@ -119,12 +119,6 @@ class A4988:
         # interval
         t = 1.0 / (self.spr * self.ms * speed) / 2
 
-        # length update
-        steps = abs(steps)
-        if self._direction == 0:
-            steps *= -1
-        length[self.side] += steps
-
         for i in range(abs(steps)):
             GPIO.output(self.steppin, True)
             sleep(t)
