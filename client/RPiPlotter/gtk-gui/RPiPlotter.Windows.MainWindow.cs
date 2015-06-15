@@ -22,7 +22,7 @@ namespace RPiPlotter.Windows
 		
 		private global::Gtk.RadioAction ControlModeAction;
 		
-		private global::Gtk.RadioAction SVGModeAction;
+		private global::Gtk.RadioAction FileModeAction;
 		
 		private global::Gtk.Action aboutAction;
 		
@@ -50,13 +50,15 @@ namespace RPiPlotter.Windows
 		
 		private global::Gtk.Alignment contentAlignment;
 		
-		private global::Gtk.VBox contentvbox;
+		private global::Gtk.Notebook notebook;
+		
+		private global::Gtk.VBox commandvbox;
 		
 		private global::Gtk.ScrolledWindow GtkScrolledWindow;
 		
 		private global::Gtk.TreeView commandTreeView;
 		
-		private global::Gtk.HBox commandhbox;
+		private global::Gtk.HBox commandentryhbox;
 		
 		private global::Gtk.Label label1;
 		
@@ -65,6 +67,32 @@ namespace RPiPlotter.Windows
 		private global::Gtk.Button sendcommandButton;
 		
 		private global::Gtk.Button panicButton;
+		
+		private global::Gtk.Label label2;
+		
+		private global::Gtk.VBox filevbox;
+		
+		private global::Gtk.Frame fileProgressFrame;
+		
+		private global::Gtk.Alignment GtkAlignment;
+		
+		private global::Gtk.HBox hbox2;
+		
+		private global::Gtk.ProgressBar fileProgressBar;
+		
+		private global::Gtk.Button cancelFileButton;
+		
+		private global::Gtk.Label fileProgressFrameLabel;
+		
+		private global::Gtk.HBox filechooserhbox;
+		
+		private global::Gtk.Label label4;
+		
+		private global::Gtk.FileChooserButton fileChooserButton;
+		
+		private global::Gtk.Button fileSendButton;
+		
+		private global::Gtk.Label label3;
 		
 		private global::Gtk.Statusbar statusbar2;
 		
@@ -110,12 +138,11 @@ namespace RPiPlotter.Windows
 			this.ControlModeAction.Sensitive = false;
 			this.ControlModeAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("Control mode");
 			w1.Add (this.ControlModeAction, null);
-			this.SVGModeAction = new global::Gtk.RadioAction ("SVGModeAction", global::Mono.Unix.Catalog.GetString ("SVG mode"), null, null, 0);
-			this.SVGModeAction.Group = this.ControlModeAction.Group;
-			this.SVGModeAction.Sensitive = false;
-			this.SVGModeAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("SVG mode");
-			this.SVGModeAction.Visible = false;
-			w1.Add (this.SVGModeAction, null);
+			this.FileModeAction = new global::Gtk.RadioAction ("FileModeAction", global::Mono.Unix.Catalog.GetString ("File mode"), null, null, 0);
+			this.FileModeAction.Group = this.CommandModeAction.Group;
+			this.FileModeAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("File mode");
+			this.FileModeAction.Visible = false;
+			w1.Add (this.FileModeAction, null);
 			this.aboutAction = new global::Gtk.Action ("aboutAction", global::Mono.Unix.Catalog.GetString ("About"), null, "gtk-about");
 			this.aboutAction.ShortLabel = global::Mono.Unix.Catalog.GetString ("About");
 			w1.Add (this.aboutAction, null);
@@ -152,13 +179,13 @@ namespace RPiPlotter.Windows
 			this.UIManager.InsertActionGroup (w1, 0);
 			this.AddAccelGroup (this.UIManager.AccelGroup);
 			this.Name = "RPiPlotter.Windows.MainWindow";
-			this.Title = global::Mono.Unix.Catalog.GetString ("RPi Plotter Controller");
+			this.Title = global::Mono.Unix.Catalog.GetString ("vPlotter Controller");
 			this.WindowPosition = ((global::Gtk.WindowPosition)(4));
 			// Container child RPiPlotter.Windows.MainWindow.Gtk.Container+ContainerChild
 			this.mainvbox = new global::Gtk.VBox ();
 			this.mainvbox.Name = "mainvbox";
 			// Container child mainvbox.Gtk.Box+BoxChild
-			this.UIManager.AddUiFromString ("<ui><menubar name='menubar'><menu name='FileAction' action='FileAction'><menuitem name='connectAction' action='connectAction'/><menuitem name='disconnectAction' action='disconnectAction'/><separator/><menuitem name='ServerInfoAction' action='ServerInfoAction'/><separator/><menuitem name='quitAction' action='quitAction'/></menu><menu name='PlotterAction' action='PlotterAction'><menuitem name='PauseExecutionAction' action='PauseExecutionAction'/><separator/><menuitem name='GetStateInfoAction' action='GetStateInfoAction'/></menu><menu name='ViewAction' action='ViewAction'><menuitem name='CommandModeAction' action='CommandModeAction'/><menuitem name='ControlModeAction' action='ControlModeAction'/><menuitem name='SVGModeAction' action='SVGModeAction'/><separator/><menuitem name='PreviewAction' action='PreviewAction'/></menu><menu name='HelpAction' action='HelpAction'><menuitem name='CommandReferenceAction' action='CommandReferenceAction'/><separator/><menuitem name='aboutAction' action='aboutAction'/></menu></menubar></ui>");
+			this.UIManager.AddUiFromString ("<ui><menubar name='menubar'><menu name='FileAction' action='FileAction'><menuitem name='connectAction' action='connectAction'/><menuitem name='disconnectAction' action='disconnectAction'/><separator/><menuitem name='ServerInfoAction' action='ServerInfoAction'/><separator/><menuitem name='quitAction' action='quitAction'/></menu><menu name='PlotterAction' action='PlotterAction'><menuitem name='PauseExecutionAction' action='PauseExecutionAction'/><separator/><menuitem name='GetStateInfoAction' action='GetStateInfoAction'/></menu><menu name='ViewAction' action='ViewAction'><menuitem name='CommandModeAction' action='CommandModeAction'/><menuitem name='FileModeAction' action='FileModeAction'/><separator/><menuitem name='PreviewAction' action='PreviewAction'/></menu><menu name='HelpAction' action='HelpAction'><menuitem name='CommandReferenceAction' action='CommandReferenceAction'/><separator/><menuitem name='aboutAction' action='aboutAction'/></menu></menubar></ui>");
 			this.menubar = ((global::Gtk.MenuBar)(this.UIManager.GetWidget ("/menubar")));
 			this.menubar.Name = "menubar";
 			this.mainvbox.Add (this.menubar);
@@ -174,11 +201,18 @@ namespace RPiPlotter.Windows
 			this.contentAlignment.RightPadding = ((uint)(6));
 			this.contentAlignment.BottomPadding = ((uint)(6));
 			// Container child contentAlignment.Gtk.Container+ContainerChild
-			this.contentvbox = new global::Gtk.VBox ();
-			this.contentvbox.Sensitive = false;
-			this.contentvbox.Name = "contentvbox";
-			this.contentvbox.Spacing = 6;
-			// Container child contentvbox.Gtk.Box+BoxChild
+			this.notebook = new global::Gtk.Notebook ();
+			this.notebook.CanFocus = true;
+			this.notebook.Name = "notebook";
+			this.notebook.CurrentPage = 1;
+			this.notebook.ShowBorder = false;
+			this.notebook.ShowTabs = false;
+			// Container child notebook.Gtk.Notebook+NotebookChild
+			this.commandvbox = new global::Gtk.VBox ();
+			this.commandvbox.Sensitive = false;
+			this.commandvbox.Name = "commandvbox";
+			this.commandvbox.Spacing = 6;
+			// Container child commandvbox.Gtk.Box+BoxChild
 			this.GtkScrolledWindow = new global::Gtk.ScrolledWindow ();
 			this.GtkScrolledWindow.Name = "GtkScrolledWindow";
 			this.GtkScrolledWindow.ShadowType = ((global::Gtk.ShadowType)(1));
@@ -188,33 +222,33 @@ namespace RPiPlotter.Windows
 			this.commandTreeView.Name = "commandTreeView";
 			this.commandTreeView.EnableSearch = false;
 			this.GtkScrolledWindow.Add (this.commandTreeView);
-			this.contentvbox.Add (this.GtkScrolledWindow);
-			global::Gtk.Box.BoxChild w4 = ((global::Gtk.Box.BoxChild)(this.contentvbox [this.GtkScrolledWindow]));
+			this.commandvbox.Add (this.GtkScrolledWindow);
+			global::Gtk.Box.BoxChild w4 = ((global::Gtk.Box.BoxChild)(this.commandvbox [this.GtkScrolledWindow]));
 			w4.Position = 0;
-			// Container child contentvbox.Gtk.Box+BoxChild
-			this.commandhbox = new global::Gtk.HBox ();
-			this.commandhbox.Name = "commandhbox";
-			this.commandhbox.Spacing = 6;
-			// Container child commandhbox.Gtk.Box+BoxChild
+			// Container child commandvbox.Gtk.Box+BoxChild
+			this.commandentryhbox = new global::Gtk.HBox ();
+			this.commandentryhbox.Name = "commandentryhbox";
+			this.commandentryhbox.Spacing = 6;
+			// Container child commandentryhbox.Gtk.Box+BoxChild
 			this.label1 = new global::Gtk.Label ();
 			this.label1.Name = "label1";
 			this.label1.LabelProp = global::Mono.Unix.Catalog.GetString ("Command:");
-			this.commandhbox.Add (this.label1);
-			global::Gtk.Box.BoxChild w5 = ((global::Gtk.Box.BoxChild)(this.commandhbox [this.label1]));
+			this.commandentryhbox.Add (this.label1);
+			global::Gtk.Box.BoxChild w5 = ((global::Gtk.Box.BoxChild)(this.commandentryhbox [this.label1]));
 			w5.Position = 0;
 			w5.Expand = false;
 			w5.Fill = false;
-			// Container child commandhbox.Gtk.Box+BoxChild
+			// Container child commandentryhbox.Gtk.Box+BoxChild
 			this.commandEntry = new global::Gtk.Entry ();
 			this.commandEntry.CanFocus = true;
 			this.commandEntry.Name = "commandEntry";
 			this.commandEntry.IsEditable = true;
-			this.commandEntry.MaxLength = 5000;
+			this.commandEntry.MaxLength = 100;
 			this.commandEntry.InvisibleChar = '●';
-			this.commandhbox.Add (this.commandEntry);
-			global::Gtk.Box.BoxChild w6 = ((global::Gtk.Box.BoxChild)(this.commandhbox [this.commandEntry]));
+			this.commandentryhbox.Add (this.commandEntry);
+			global::Gtk.Box.BoxChild w6 = ((global::Gtk.Box.BoxChild)(this.commandentryhbox [this.commandEntry]));
 			w6.Position = 1;
-			// Container child commandhbox.Gtk.Box+BoxChild
+			// Container child commandentryhbox.Gtk.Box+BoxChild
 			this.sendcommandButton = new global::Gtk.Button ();
 			this.sendcommandButton.Sensitive = false;
 			this.sendcommandButton.CanDefault = true;
@@ -222,31 +256,133 @@ namespace RPiPlotter.Windows
 			this.sendcommandButton.Name = "sendcommandButton";
 			this.sendcommandButton.UseUnderline = true;
 			this.sendcommandButton.Label = global::Mono.Unix.Catalog.GetString ("Send");
-			this.commandhbox.Add (this.sendcommandButton);
-			global::Gtk.Box.BoxChild w7 = ((global::Gtk.Box.BoxChild)(this.commandhbox [this.sendcommandButton]));
+			this.commandentryhbox.Add (this.sendcommandButton);
+			global::Gtk.Box.BoxChild w7 = ((global::Gtk.Box.BoxChild)(this.commandentryhbox [this.sendcommandButton]));
 			w7.Position = 2;
 			w7.Expand = false;
 			w7.Fill = false;
-			// Container child commandhbox.Gtk.Box+BoxChild
+			// Container child commandentryhbox.Gtk.Box+BoxChild
 			this.panicButton = new global::Gtk.Button ();
 			this.panicButton.CanFocus = true;
 			this.panicButton.Name = "panicButton";
 			this.panicButton.UseUnderline = true;
 			this.panicButton.Label = global::Mono.Unix.Catalog.GetString ("PANIC!");
-			this.commandhbox.Add (this.panicButton);
-			global::Gtk.Box.BoxChild w8 = ((global::Gtk.Box.BoxChild)(this.commandhbox [this.panicButton]));
+			this.commandentryhbox.Add (this.panicButton);
+			global::Gtk.Box.BoxChild w8 = ((global::Gtk.Box.BoxChild)(this.commandentryhbox [this.panicButton]));
 			w8.Position = 3;
 			w8.Expand = false;
 			w8.Fill = false;
-			this.contentvbox.Add (this.commandhbox);
-			global::Gtk.Box.BoxChild w9 = ((global::Gtk.Box.BoxChild)(this.contentvbox [this.commandhbox]));
+			this.commandvbox.Add (this.commandentryhbox);
+			global::Gtk.Box.BoxChild w9 = ((global::Gtk.Box.BoxChild)(this.commandvbox [this.commandentryhbox]));
 			w9.Position = 1;
 			w9.Expand = false;
 			w9.Fill = false;
-			this.contentAlignment.Add (this.contentvbox);
+			this.notebook.Add (this.commandvbox);
+			// Notebook tab
+			this.label2 = new global::Gtk.Label ();
+			this.label2.Name = "label2";
+			this.label2.LabelProp = global::Mono.Unix.Catalog.GetString ("page1");
+			this.notebook.SetTabLabel (this.commandvbox, this.label2);
+			this.label2.ShowAll ();
+			// Container child notebook.Gtk.Notebook+NotebookChild
+			this.filevbox = new global::Gtk.VBox ();
+			this.filevbox.Sensitive = false;
+			this.filevbox.Name = "filevbox";
+			this.filevbox.Spacing = 6;
+			// Container child filevbox.Gtk.Box+BoxChild
+			this.fileProgressFrame = new global::Gtk.Frame ();
+			this.fileProgressFrame.Name = "fileProgressFrame";
+			this.fileProgressFrame.ShadowType = ((global::Gtk.ShadowType)(0));
+			// Container child fileProgressFrame.Gtk.Container+ContainerChild
+			this.GtkAlignment = new global::Gtk.Alignment (0F, 0F, 1F, 1F);
+			this.GtkAlignment.Name = "GtkAlignment";
+			this.GtkAlignment.LeftPadding = ((uint)(5));
+			this.GtkAlignment.TopPadding = ((uint)(5));
+			this.GtkAlignment.BottomPadding = ((uint)(5));
+			// Container child GtkAlignment.Gtk.Container+ContainerChild
+			this.hbox2 = new global::Gtk.HBox ();
+			this.hbox2.Name = "hbox2";
+			this.hbox2.Spacing = 6;
+			// Container child hbox2.Gtk.Box+BoxChild
+			this.fileProgressBar = new global::Gtk.ProgressBar ();
+			this.fileProgressBar.Name = "fileProgressBar";
+			this.fileProgressBar.Ellipsize = ((global::Pango.EllipsizeMode)(2));
+			this.hbox2.Add (this.fileProgressBar);
+			global::Gtk.Box.BoxChild w11 = ((global::Gtk.Box.BoxChild)(this.hbox2 [this.fileProgressBar]));
+			w11.Position = 0;
+			// Container child hbox2.Gtk.Box+BoxChild
+			this.cancelFileButton = new global::Gtk.Button ();
+			this.cancelFileButton.CanFocus = true;
+			this.cancelFileButton.Name = "cancelFileButton";
+			this.cancelFileButton.UseUnderline = true;
+			this.cancelFileButton.Label = global::Mono.Unix.Catalog.GetString ("Cancel");
+			this.hbox2.Add (this.cancelFileButton);
+			global::Gtk.Box.BoxChild w12 = ((global::Gtk.Box.BoxChild)(this.hbox2 [this.cancelFileButton]));
+			w12.Position = 1;
+			w12.Expand = false;
+			w12.Fill = false;
+			this.GtkAlignment.Add (this.hbox2);
+			this.fileProgressFrame.Add (this.GtkAlignment);
+			this.fileProgressFrameLabel = new global::Gtk.Label ();
+			this.fileProgressFrameLabel.Name = "fileProgressFrameLabel";
+			this.fileProgressFrameLabel.LabelProp = global::Mono.Unix.Catalog.GetString ("<b>Execution status</b>");
+			this.fileProgressFrameLabel.UseMarkup = true;
+			this.fileProgressFrame.LabelWidget = this.fileProgressFrameLabel;
+			this.filevbox.Add (this.fileProgressFrame);
+			global::Gtk.Box.BoxChild w15 = ((global::Gtk.Box.BoxChild)(this.filevbox [this.fileProgressFrame]));
+			w15.Position = 0;
+			w15.Expand = false;
+			w15.Fill = false;
+			// Container child filevbox.Gtk.Box+BoxChild
+			this.filechooserhbox = new global::Gtk.HBox ();
+			this.filechooserhbox.Name = "filechooserhbox";
+			this.filechooserhbox.Spacing = 6;
+			// Container child filechooserhbox.Gtk.Box+BoxChild
+			this.label4 = new global::Gtk.Label ();
+			this.label4.Name = "label4";
+			this.label4.LabelProp = global::Mono.Unix.Catalog.GetString ("File:");
+			this.filechooserhbox.Add (this.label4);
+			global::Gtk.Box.BoxChild w16 = ((global::Gtk.Box.BoxChild)(this.filechooserhbox [this.label4]));
+			w16.Position = 0;
+			w16.Expand = false;
+			w16.Fill = false;
+			// Container child filechooserhbox.Gtk.Box+BoxChild
+			this.fileChooserButton = new global::Gtk.FileChooserButton (global::Mono.Unix.Catalog.GetString ("Choose *.plo file"), ((global::Gtk.FileChooserAction)(0)));
+			this.fileChooserButton.Name = "fileChooserButton";
+			this.filechooserhbox.Add (this.fileChooserButton);
+			global::Gtk.Box.BoxChild w17 = ((global::Gtk.Box.BoxChild)(this.filechooserhbox [this.fileChooserButton]));
+			w17.Position = 1;
+			// Container child filechooserhbox.Gtk.Box+BoxChild
+			this.fileSendButton = new global::Gtk.Button ();
+			this.fileSendButton.Sensitive = false;
+			this.fileSendButton.CanFocus = true;
+			this.fileSendButton.Name = "fileSendButton";
+			this.fileSendButton.UseUnderline = true;
+			this.fileSendButton.Label = global::Mono.Unix.Catalog.GetString ("Send");
+			this.filechooserhbox.Add (this.fileSendButton);
+			global::Gtk.Box.BoxChild w18 = ((global::Gtk.Box.BoxChild)(this.filechooserhbox [this.fileSendButton]));
+			w18.Position = 2;
+			w18.Expand = false;
+			w18.Fill = false;
+			this.filevbox.Add (this.filechooserhbox);
+			global::Gtk.Box.BoxChild w19 = ((global::Gtk.Box.BoxChild)(this.filevbox [this.filechooserhbox]));
+			w19.PackType = ((global::Gtk.PackType)(1));
+			w19.Position = 2;
+			w19.Expand = false;
+			w19.Fill = false;
+			this.notebook.Add (this.filevbox);
+			global::Gtk.Notebook.NotebookChild w20 = ((global::Gtk.Notebook.NotebookChild)(this.notebook [this.filevbox]));
+			w20.Position = 1;
+			// Notebook tab
+			this.label3 = new global::Gtk.Label ();
+			this.label3.Name = "label3";
+			this.label3.LabelProp = global::Mono.Unix.Catalog.GetString ("page2");
+			this.notebook.SetTabLabel (this.filevbox, this.label3);
+			this.label3.ShowAll ();
+			this.contentAlignment.Add (this.notebook);
 			this.mainvbox.Add (this.contentAlignment);
-			global::Gtk.Box.BoxChild w11 = ((global::Gtk.Box.BoxChild)(this.mainvbox [this.contentAlignment]));
-			w11.Position = 1;
+			global::Gtk.Box.BoxChild w22 = ((global::Gtk.Box.BoxChild)(this.mainvbox [this.contentAlignment]));
+			w22.Position = 1;
 			// Container child mainvbox.Gtk.Box+BoxChild
 			this.statusbar2 = new global::Gtk.Statusbar ();
 			this.statusbar2.Name = "statusbar2";
@@ -266,30 +402,30 @@ namespace RPiPlotter.Windows
 			this.connectStatusImage.Name = "connectStatusImage";
 			this.connectStatusImage.Pixbuf = global::Stetic.IconLoader.LoadIcon (this, "gtk-disconnect", global::Gtk.IconSize.SmallToolbar);
 			this.connectStatusHbox.Add (this.connectStatusImage);
-			global::Gtk.Box.BoxChild w12 = ((global::Gtk.Box.BoxChild)(this.connectStatusHbox [this.connectStatusImage]));
-			w12.Position = 0;
-			w12.Expand = false;
-			w12.Fill = false;
+			global::Gtk.Box.BoxChild w23 = ((global::Gtk.Box.BoxChild)(this.connectStatusHbox [this.connectStatusImage]));
+			w23.Position = 0;
+			w23.Expand = false;
+			w23.Fill = false;
 			// Container child connectStatusHbox.Gtk.Box+BoxChild
 			this.connectStatusLabel = new global::Gtk.Label ();
 			this.connectStatusLabel.Name = "connectStatusLabel";
 			this.connectStatusLabel.LabelProp = global::Mono.Unix.Catalog.GetString ("Disconnected");
 			this.connectStatusHbox.Add (this.connectStatusLabel);
-			global::Gtk.Box.BoxChild w13 = ((global::Gtk.Box.BoxChild)(this.connectStatusHbox [this.connectStatusLabel]));
-			w13.Position = 1;
-			w13.Expand = false;
-			w13.Fill = false;
+			global::Gtk.Box.BoxChild w24 = ((global::Gtk.Box.BoxChild)(this.connectStatusHbox [this.connectStatusLabel]));
+			w24.Position = 1;
+			w24.Expand = false;
+			w24.Fill = false;
 			this.connectStatusAlignment.Add (this.connectStatusHbox);
 			this.statusbar2.Add (this.connectStatusAlignment);
-			global::Gtk.Box.BoxChild w15 = ((global::Gtk.Box.BoxChild)(this.statusbar2 [this.connectStatusAlignment]));
-			w15.Position = 0;
-			w15.Expand = false;
-			w15.Fill = false;
+			global::Gtk.Box.BoxChild w26 = ((global::Gtk.Box.BoxChild)(this.statusbar2 [this.connectStatusAlignment]));
+			w26.Position = 0;
+			w26.Expand = false;
+			w26.Fill = false;
 			this.mainvbox.Add (this.statusbar2);
-			global::Gtk.Box.BoxChild w16 = ((global::Gtk.Box.BoxChild)(this.mainvbox [this.statusbar2]));
-			w16.Position = 2;
-			w16.Expand = false;
-			w16.Fill = false;
+			global::Gtk.Box.BoxChild w27 = ((global::Gtk.Box.BoxChild)(this.mainvbox [this.statusbar2]));
+			w27.Position = 2;
+			w27.Expand = false;
+			w27.Fill = false;
 			this.Add (this.mainvbox);
 			if ((this.Child != null)) {
 				this.Child.ShowAll ();
@@ -297,19 +433,26 @@ namespace RPiPlotter.Windows
 			this.DefaultWidth = 488;
 			this.DefaultHeight = 299;
 			this.sendcommandButton.HasDefault = true;
+			this.fileProgressFrame.Hide ();
 			this.Show ();
 			this.DeleteEvent += new global::Gtk.DeleteEventHandler (this.OnQuit);
 			this.connectAction.Activated += new global::System.EventHandler (this.OnConnectActionActivated);
 			this.disconnectAction.Activated += new global::System.EventHandler (this.OnDisconnectActionActivated);
 			this.quitAction.Activated += new global::System.EventHandler (this.OnQuit);
+			this.CommandModeAction.Toggled += new global::System.EventHandler (this.OnCommandModeActionToggled);
+			this.FileModeAction.Toggled += new global::System.EventHandler (this.OnFileModeActionToggled);
 			this.PreviewAction.Toggled += new global::System.EventHandler (this.OnPreviewActionToggled);
 			this.ServerInfoAction.Activated += new global::System.EventHandler (this.OnServerInfoActionActivated);
 			this.PauseExecutionAction.Toggled += new global::System.EventHandler (this.OnPauseExecutionActionToggled);
+			this.GetStateInfoAction.Activated += new global::System.EventHandler (this.OnGetStateInfoActionActivated);
 			this.commandTreeView.RowActivated += new global::Gtk.RowActivatedHandler (this.OnCommandTreeViewRowActivated);
-			this.commandEntry.Activated += new global::System.EventHandler (this.OnCommandEntryActivated);
 			this.commandEntry.Changed += new global::System.EventHandler (this.OnCommandEntryChanged);
+			this.commandEntry.Activated += new global::System.EventHandler (this.OnCommandEntryActivated);
 			this.sendcommandButton.Clicked += new global::System.EventHandler (this.OnSendcommandButtonClicked);
 			this.panicButton.Clicked += new global::System.EventHandler (this.OnPanicButtonClicked);
+			this.cancelFileButton.Clicked += new global::System.EventHandler (this.OnCancelFileButtonClicked);
+			this.fileChooserButton.SelectionChanged += new global::System.EventHandler (this.OnFileChooserButtonSelectionChanged);
+			this.fileSendButton.Clicked += new global::System.EventHandler (this.OnFileSendButtonClicked);
 		}
 	}
 }

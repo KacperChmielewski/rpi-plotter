@@ -18,13 +18,16 @@ plotter = None
 
 
 class TCPPlotterListener(socketserver.BaseRequestHandler):
+    filereceive = False
+    file = None
+
     def handle(self):
         global socket
         try:
             logger.info("{}:{} connected!".format(self.client_address[0], self.client_address[1]))
             socket = self.request
             while True:
-                data = socket.recv(8192)
+                data = socket.recv(1024)
                 if data == b'\x01':
                     continue
                 if not data:
@@ -38,8 +41,19 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
                     plotter.setexecpause(True)
                 elif m == "!UNPAUSE":
                     plotter.setexecpause(False)
+                elif m == "!STATE":
+                    self.sendstate()
                 elif m == "!INFO":
                     self.sendinfo()
+                elif m.startswith("FILE|"):
+                    self.filereceive = True
+                    self.file = m.lstrip("FILE|")
+                elif m.endswith("|END") and self.filereceive:
+                    self.file += m.rstrip("|END")
+                    self.filereceive = False
+                    queue.put(("FILE", self.file))
+                elif self.filereceive:
+                    self.file += m
                 else:
                     queue.put(m.split('|'))
         except Exception as e:
@@ -48,6 +62,15 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
             queue.queue.clear()
             socket.close()
             logger.info(self.client_address[0] + " disconnected!")
+
+    def sendstate(self):
+        info = "<b>Coordinate:</b> {0[0]:.2f}, {0[1]:.2f}\n" \
+               "<b>Strings length:</b>\n\tLeft: {1[0]:.2f}\n\tRight: {1[1]:.2f}".format(plotter.getcoord(), hw.length)
+        logger.debug(info)
+        try:
+            self.request.sendall(bytes("MSG|" + info + ';;', "utf-8"))
+        except OSError:
+            pass
 
     def sendinfo(self):
         import platform
@@ -95,40 +118,64 @@ def process():
             time.sleep(0.1)
             continue
 
+        info, msg = '', ''
         index, command = queue.get()
-        try:
-            execmsg = "EXEC|" + index
-            logger.debug(execmsg)
-            socket.sendall(bytes(execmsg + ';;', "utf-8"))
-        except OSError:
-            continue
-        # TODO: report position
-        msg = ""
-        success = False
+        if index == "FILE":
+            success = False
 
-        begintime = time.time()
-        try:
-            for result in plotter.execute(command):
-                if result:
-                    msg += str(result) + '\n'
-                    logger.info(str(result))
-            success = True
-        except NotCalibratedError as ex:
-            logger.error(str(ex))
-            msg = str(ex) + " Use CAL <x>,<y>"
-        except CommandError as ex:
-            logger.error(str(ex))
-            msg = str(ex)
-        endtime = time.time()
+            def send_progress(current, total):
+                progmsg = "FILE|PROGRESS|{}|{}".format(current, total)
+                logger.debug(progmsg)
+                socket.sendall(bytes(progmsg + ';;', "utf-8"))
 
-        if msg:
-            msg = str(msg).strip()
+            try:
+                for result in plotter.execute(command, progress_cb=send_progress):
+                    if result:
+                        logger.info(str(result))
+                success = True
+            except OSError:
+                continue
+            except CommandError as ex:
+                logger.error(str(ex))
+                msg = str(ex)
 
-        if success:
-            info = "OK|{}|{}".format(index, "{:f} s".format(endtime - begintime))
+            if success:
+                info = "FILE|DONE"
+            else:
+                info = "FILE|FAIL"
         else:
-            info = "ERR|{}".format(index)
-            queue.queue.clear()
+            try:
+                execmsg = "EXEC|" + index
+                logger.debug(execmsg)
+                socket.sendall(bytes(execmsg + ';;', "utf-8"))
+            except OSError:
+                continue
+            # TODO: report position
+            success = False
+
+            begintime = time.time()
+            try:
+                for result in plotter.execute(command):
+                    if result:
+                        msg += str(result) + '\n'
+                        logger.info(str(result))
+                success = True
+            except NotCalibratedError as ex:
+                logger.error(str(ex))
+                msg = str(ex) + " Use CAL <x>,<y>"
+            except CommandError as ex:
+                logger.error(str(ex))
+                msg = str(ex)
+            endtime = time.time()
+
+            if msg:
+                msg = str(msg).strip()
+
+            if success:
+                info = "OK|{}|{}".format(index, "{:f} s".format(endtime - begintime))
+            else:
+                info = "ERR|{}".format(index)
+                queue.queue.clear()
 
         if msg:
             info += "|" + msg

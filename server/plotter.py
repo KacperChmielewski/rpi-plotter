@@ -512,7 +512,7 @@ class Plotter:
 
     # // Main execution command
 
-    def execute(self, command):
+    def execute(self, command, progress_cb=None):
         """:type command: str"""
         if self._execstop:
             self._execstop = False
@@ -567,6 +567,8 @@ class Plotter:
         self.poweroffthread.stop()
         counter = 1
         for cmd, a, args in action_stack:
+            if progress_cb:
+                progress_cb(counter, len(action_stack))
             self.logger.info("{}: {}".format(counter, cmd))
             counter += 1
             if args:

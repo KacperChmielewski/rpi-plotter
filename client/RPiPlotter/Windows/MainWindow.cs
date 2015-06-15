@@ -2,6 +2,7 @@
 using Gtk;
 using System.Text.RegularExpressions;
 using RPiPlotter.Net;
+using System.Linq;
 
 namespace RPiPlotter.Windows
 {
@@ -19,6 +20,10 @@ namespace RPiPlotter.Windows
             previewWindow = new PreviewWindow();
             previewWindow.Hidden += (o, args) => PreviewAction.Active = false;
             previewWindow.Hide();
+            var filter = new FileFilter();
+            filter.Name = "Plotter path file";
+            filter.AddPattern("*.plo");
+            fileChooserButton.Filter = filter;
             this.SetupCommandTreeView();
             this.LoadIcons();
             //var configuration = System.Configuration.ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
@@ -71,16 +76,49 @@ namespace RPiPlotter.Windows
 
         }
 
+        void ConnectUIChange()
+        {
+            disconnectAction.Sensitive = true;
+            commandvbox.Sensitive = true;
+            filevbox.Sensitive = true;
+            sendcommandButton.Sensitive = false;
+            connectStatusLabel.Text = "Connected to " + connector.Hostname;
+            connectStatusImage.Pixbuf = connectedPixbuf;
+            PauseExecutionAction.Sensitive = true;
+            ServerInfoAction.Sensitive = true;
+            GetStateInfoAction.Sensitive = true;
+        }
+
         void DisconnectUIChange()
         {
             disconnectAction.Sensitive = false;
-            contentvbox.Sensitive = false;
+            commandvbox.Sensitive = false;
+            filevbox.Sensitive = false;
             PauseExecutionAction.Sensitive = false;
             ServerInfoAction.Sensitive = false;
             connectStatusLabel.Text = "Disconnected";
             connectStatusImage.Pixbuf = disconnectedPixbuf;
             commandListStore.Clear();
             previewWindow.ClearPaths();
+        }
+
+        void FileStartUIChange()
+        {
+            fileProgressFrame.Visible = true;
+            CommandModeAction.Sensitive = false;
+            fileProgressBar.Text = "Sending file...";
+            filechooserhbox.Sensitive = false;
+        }
+
+        void FileEndUIChange()
+        {
+            cancelFileButton.Sensitive = false;
+            fileProgressFrame.Visible = false;
+            CommandModeAction.Sensitive = true;
+            filechooserhbox.Sensitive = true;
+            fileProgressBar.Fraction = 0;
+            fileProgressBar.Text = "";
+            fileChooserButton.UnselectAll();
         }
 
         void OnQuit(object o, EventArgs args)
@@ -108,6 +146,11 @@ namespace RPiPlotter.Windows
                 connector.CommandFail += HandleCommandFail;
                 connector.CommandExecuting += HandleCommandExecuting;
                 connector.MessageReceived += HandleMessageReceived;
+                connector.FileCompleted += HandleFileCompleted;
+                connector.FileError += HandleFileError;
+                connector.FileProgress += HandleFileProgress;
+                connector.FileSended += HandleFileSended;
+
                 try
                 {
                     connector.Connect();
@@ -131,14 +174,7 @@ namespace RPiPlotter.Windows
 
         void OnConnectorConnected(object sender, EventArgs e)
         {
-            disconnectAction.Sensitive = true;
-            contentvbox.Sensitive = true;
-            sendcommandButton.Sensitive = false;
-            connectStatusLabel.Text = "Connected to " + connector.Hostname;
-            connectStatusImage.Pixbuf = connectedPixbuf;
-            PauseExecutionAction.Sensitive = true;
-            ServerInfoAction.Sensitive = true;
-            GetStateInfoAction.Sensitive = true;
+            ConnectUIChange();
         }
 
         void OnConnectorConnectionError(object sender, UnhandledExceptionEventArgs e)
@@ -168,10 +204,9 @@ namespace RPiPlotter.Windows
             }
         }
 
-        void OnDisconnectActionActivated(object sender, EventArgs e)
-        {
-            connector.Disconnect();
-        }
+        #endregion
+
+        #region Connector Command Events
 
         void HandleCommandFail(object sender, CommandEventArgs e)
         {
@@ -238,6 +273,15 @@ namespace RPiPlotter.Windows
                     previewWindow.PathData += " " + command;
                 }
             }
+
+            bool allDone = true;
+            foreach (object[] row in commandListStore)
+            {
+                if (row[1] == executingPixbuf)
+                    allDone = false;
+            }
+            FileModeAction.Sensitive = allDone;
+
             if (!string.IsNullOrEmpty(e.Message))
             {
                 var dialog = new Gtk.MessageDialog(this,
@@ -252,6 +296,7 @@ namespace RPiPlotter.Windows
 
         void HandleCommandExecuting(object sender, CommandEventArgs e)
         {
+            FileModeAction.Sensitive = false;
             var index = 0;
             foreach (object[] row in commandListStore)
             {
@@ -276,7 +321,7 @@ namespace RPiPlotter.Windows
             }
         }
 
-        void HandleMessageReceived(object sender, MessageReceivedEventArgs e)
+        void HandleMessageReceived(object sender, MessageEventArgs e)
         {
             if (!string.IsNullOrEmpty(e.Message))
             {
@@ -293,6 +338,44 @@ namespace RPiPlotter.Windows
 
         #endregion
 
+        #region Connector File Events
+
+        void HandleFileCompleted(object sender, EventArgs e)
+        {
+            FileEndUIChange();
+        }
+
+        void HandleFileError(object sender, MessageEventArgs e)
+        {
+            FileEndUIChange();
+            if (e.Message != string.Empty)
+            {
+                var dialog = new Gtk.MessageDialog(this,
+                                 Gtk.DialogFlags.DestroyWithParent, 
+                                 Gtk.MessageType.Error, 
+                                 Gtk.ButtonsType.Ok,
+                                 true,
+                                 "File execution failed: " + e.Message);
+                dialog.Run();
+                dialog.Destroy();
+            }
+        }
+
+        void HandleFileProgress(object sender, ProgressEventArgs e)
+        {
+            fileProgressBar.Fraction = (float)e.Current / e.Total;
+            fileProgressBar.Text = string.Format("Executing ({0}/{1})", e.Current, e.Total);
+        }
+
+        void HandleFileSended(object sender, EventArgs e)
+        {
+            fileProgressFrameLabel.Text = fileChooserButton.Filename;
+            fileProgressBar.Text = "Executing...";
+            cancelFileButton.Sensitive = true;
+        }
+
+        #endregion
+
         void OnCommandTreeViewRowActivated(object o, RowActivatedArgs args)
         {
             TreeIter iter;
@@ -303,7 +386,6 @@ namespace RPiPlotter.Windows
             }
 
         }
-
 
         void OnPreviewActionToggled(object sender, EventArgs e)
         {
@@ -321,14 +403,7 @@ namespace RPiPlotter.Windows
         void OnCommandEntryChanged(object sender, EventArgs e)
         {
             var text = commandEntry.Text;
-            if (!string.IsNullOrWhiteSpace(text) && Regex.IsMatch(text, @"^\s*[A-Za-z].*"))
-            {
-                sendcommandButton.Sensitive = true;
-            }
-            else
-            {
-                sendcommandButton.Sensitive = false;
-            }
+            sendcommandButton.Sensitive = !string.IsNullOrWhiteSpace(text) && Regex.IsMatch(text, @"^\s*[A-Za-z].*");
         }
 
         void OnSendcommandButtonClicked(object sender, EventArgs e)
@@ -339,6 +414,11 @@ namespace RPiPlotter.Windows
         void OnPanicButtonClicked(object sender, EventArgs e)
         {
             connector.SendServerCommand("PANIC");
+        }
+
+        void OnDisconnectActionActivated(object sender, EventArgs e)
+        {
+            connector.Disconnect();
         }
 
         void OnCommandEntryActivated(object sender, EventArgs e)
@@ -358,6 +438,37 @@ namespace RPiPlotter.Windows
         void OnServerInfoActionActivated(object sender, EventArgs e)
         {
             connector.SendServerCommand("INFO");
+        }
+
+        protected void OnGetStateInfoActionActivated(object sender, EventArgs e)
+        {
+            connector.SendServerCommand("STATE");
+        }
+
+        void OnCommandModeActionToggled(object sender, EventArgs e)
+        {
+            notebook.Page = 0;
+        }
+
+        void OnFileModeActionToggled(object sender, EventArgs e)
+        {
+            notebook.Page = 1;
+        }
+
+        void OnFileSendButtonClicked(object sender, EventArgs e)
+        {
+            FileStartUIChange();
+            connector.SendFile(fileChooserButton.Filename);
+        }
+
+        void OnCancelFileButtonClicked(object sender, EventArgs e)
+        {
+            connector.SendServerCommand("PANIC");
+        }
+
+        void OnFileChooserButtonSelectionChanged(object sender, EventArgs e)
+        {
+            fileSendButton.Sensitive = fileChooserButton.Filename != null;
         }
     }
 }

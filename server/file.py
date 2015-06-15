@@ -13,7 +13,7 @@ class CommandFileParser:
 
         cmds = fp.read()
         fp.close()
-        cmds = re.sub(r'(\s+)|(^#.*)', ' ', cmds, flags=re.MULTILINE).strip()
+        cmds = re.sub(r'(\s{2,}|[\t\n\r])|(^#.*)', ' ', cmds, flags=re.MULTILINE).strip()
         for msg in self.plotter.execute(cmds):
             if msg:
                 yield msg
