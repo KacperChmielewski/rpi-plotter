@@ -19,7 +19,7 @@ class Plotter:
     m1, m2 = [0, 0], [81013, 0]
     spr = 200  # steps per revolution in full step mode
     ms = 16  # (1, 2, 4, 8, 16)
-    curve_acc = 0.01
+    curve_acc = 0.025
     speed = 1
     sr, atxpower, separator = None, None, None
     right_engine, left_engine = None, None
@@ -58,10 +58,8 @@ class Plotter:
         self.power = False
         self._execpause, self._execstop = False, False
         self.startpoint, self.controlpoint = None, None
-        # self.prevpos = None
         self.offset = (0, 0)
         self.poweroff_interval = 15
-        self.frac_change = [0, 0]
 
         self.statepath = None
 
@@ -201,45 +199,37 @@ class Plotter:
     def move(self, left, right, speed):
         if not self.getpower():
             self.setpower(True)
-        gleft = int(left)
-        gright = int(right)
+        left = left
+        right = right
         speed = float(speed)
-        if gleft == 0 or gright == 0:
+        if left == 0 or right == 0:
             # move
-            self.left_engine.move(gleft, speed)
-            self.right_engine.move(gright, speed)
+            self.left_engine.move(left, speed)
+            self.right_engine.move(right, speed)
         else:
-            rel = abs(float(gleft) / gright)
+            rel = abs(float(left) / right)
             done = 0
-            ldir = sign(gleft)  # Left Direction
-            rdir = sign(gright)  # Right Direction
+            ldir = sign(left)  # Left Direction
+            rdir = sign(right)  # Right Direction
             if ldir == -1:
                 ldir = 0
             self.left_engine.direction = ldir
             if rdir == -1:
                 rdir = 0
-            r = 0
-            l = 0
             self.right_engine.direction = rdir
-            for i in range(1, abs(gright) + 1):
+
+            for i in range(1, abs(round(right)) + 1):
                 if self._execstop:
                     self._execstop = False
-                    hw.length[0] += r
-                    hw.length[1] += l
                     raise ExecutionError()
                 while self.getexecpause():
                     time.sleep(0.1)
                 self.right_engine.move(1, speed)
-                r += 1 * rdir
-                htbd = int(i * rel)  # steps which Has To Be Done
+                htbd = i * rel  # steps which Has To Be Done
                 td = htbd - done  # steps To Do
                 self.left_engine.move(td, speed)
-                l += td * ldir
                 done = htbd
-
-        # length update
-        hw.length[0] += gleft
-        hw.length[1] += gright
+            pass
 
     # // SVG Commands
 
@@ -256,11 +246,7 @@ class Plotter:
             y += self.offset[1]
 
         self.setseparator(sep)
-        x, y = round(x), round(y)
         dest = (x, y)
-
-        # if self.prevpos and self.prevpos == dest:
-        #     self.logger.debug("Skipping move to " + str(dest))
 
         if not self.startpoint:
             self.startpoint = currentpos
@@ -268,16 +254,7 @@ class Plotter:
             self.controlpoint = None
 
         destination = ctl(dest, self.m1, self.m2)
-        change = [destination[0] - hw.length[0], destination[1] - hw.length[1]]
-        for i in range(2):
-            if abs(self.frac_change[i]) > 1:
-                remnant = int(self.frac_change[i])
-                change[i] += remnant
-                self.frac_change[i] -= remnant
-        self.frac_change[0] += change[0] - int(change[0])
-        self.frac_change[1] += change[1] - int(change[1])
-
-        change = (int(change[0]), int(change[1]))
+        change = (destination[0] - hw.length[0], destination[1] - hw.length[1])
         if change == (0, 0):
             return
 
@@ -285,7 +262,6 @@ class Plotter:
         self.move(change[0], change[1], self.speed)
         if savepoint:
             self.startpoint = dest
-            # self.prevpos = dest
 
     def moveto_rel(self, x, y):
         self.moveto(x, y, True, True, relative=True)
@@ -297,13 +273,13 @@ class Plotter:
         self.moveto(x, y, False, False, relative=True)
 
     def vertical(self, y):
-        self.moveto(int(self.getcoord()[0]), y, False, False)
+        self.moveto(self.getcoord()[0], y, False, False)
 
     def vertical_rel(self, y):
         self.moveto(0, y, False, False, relative=True)
 
     def horizontal(self, x):
-        self.moveto(x, int(self.getcoord()[1]), False, False)
+        self.moveto(x, self.getcoord()[1], False, False)
 
     def horizontal_rel(self, x):
         self.moveto(x, 0, False, False, relative=True)
@@ -320,7 +296,7 @@ class Plotter:
         if relative:
             grp_points = [(p[0] + start[0], p[1] + start[1]) for p in grp_points]
 
-        grp_points.insert(0, tuple([round(p) for p in start]))  # add start point
+        grp_points.insert(0, start)  # add start point
 
         if pol(grp_points, 5):
             self.lineto(grp_points[0][0], grp_points[0][1])
@@ -484,9 +460,9 @@ class Plotter:
         self.separator.set(int(state))
 
     def calibrate(self, x, y):
-        p = (int(x), int(y))
+        p = (float(x), float(y))
         hw.length = ctl(p, self.m1, self.m2)
-        hw.length = [int(hw.length[0]), int(hw.length[1])]
+        hw.length = [hw.length[0], hw.length[1]]
         self.calibrated = True
         self.logger.debug("Calibrated at " + str(p))
 

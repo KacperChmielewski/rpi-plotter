@@ -104,6 +104,7 @@ class A4988:
         # setting up GPIO outputs for direction and step
         GPIO.setup(self.directionpin, GPIO.OUT)
         GPIO.setup(self.steppin, GPIO.OUT)
+        self.steps_frac = 0
 
     def power(self, status):
         self.sr.output([self.enablepin, not status], [self.resetpin, status], [self.sleeppin, status])
@@ -119,6 +120,19 @@ class A4988:
         # interval
         t = 1.0 / (self.spr * self.ms * speed) / 2
 
+        # length update
+        steps = abs(steps)
+        if self._direction == 0:
+            steps *= -1
+
+        self.steps_frac += steps - int(steps)
+        steps = int(steps)
+        if abs(self.steps_frac) > 1:
+                remnant = int(self.steps_frac)
+                steps += remnant
+                self.steps_frac -= remnant
+
+        length[self.side] += steps
         for i in range(abs(steps)):
             GPIO.output(self.steppin, True)
             sleep(t)
