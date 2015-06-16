@@ -4,10 +4,8 @@ import re
 
 
 class CommandFileParser:
-    def __init__(self, plotter, fp):
+    def __init__(self, plotter):
         self.plotter = plotter
-        if fp:
-            self.execute(fp)
 
     def execute(self, fp):
         if not self.plotter:
@@ -15,11 +13,7 @@ class CommandFileParser:
 
         cmds = fp.read()
         fp.close()
-        cmds = re.sub(r'\s+', ' ', cmds).strip()
-        try:
-            for msg in self.plotter.execute(cmds):
-                if msg:
-                    print(msg)
-        except CommandError as ex:
-            print("ERROR: {}.".format(str(ex)), file=sys.stderr)
-            return
+        cmds = re.sub(r'(\s{2,}|[\t\n\r])|(^#.*)', ' ', cmds, flags=re.MULTILINE).strip()
+        for msg in self.plotter.execute(cmds):
+            if msg:
+                yield msg

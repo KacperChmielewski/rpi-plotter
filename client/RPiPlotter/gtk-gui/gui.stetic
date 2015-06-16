@@ -68,6 +68,7 @@
         <property name="Active">True</property>
         <property name="Value">0</property>
         <property name="Group">viewmode</property>
+        <signal name="Toggled" handler="OnCommandModeActionToggled" />
       </action>
       <action id="ControlModeAction">
         <property name="Type">Radio</property>
@@ -79,16 +80,16 @@
         <property name="Value">0</property>
         <property name="Group">viewmode</property>
       </action>
-      <action id="SVGModeAction">
+      <action id="FileModeAction">
         <property name="Type">Radio</property>
-        <property name="Label" translatable="yes">SVG mode</property>
-        <property name="Sensitive">False</property>
-        <property name="ShortLabel" translatable="yes">SVG mode</property>
+        <property name="Label" translatable="yes">File mode</property>
+        <property name="ShortLabel" translatable="yes">File mode</property>
         <property name="Visible">False</property>
         <property name="DrawAsRadio">False</property>
         <property name="Active">False</property>
         <property name="Value">0</property>
         <property name="Group">viewmode</property>
+        <signal name="Toggled" handler="OnFileModeActionToggled" />
       </action>
       <action id="aboutAction">
         <property name="Type">Action</property>
@@ -146,15 +147,22 @@
         <property name="Label" translatable="yes">Get state info</property>
         <property name="Sensitive">False</property>
         <property name="ShortLabel" translatable="yes">Get coordinates</property>
+        <signal name="Activated" handler="OnGetStateInfoActionActivated" />
       </action>
       <action id="GetStringsLengthAction">
         <property name="Type">Action</property>
         <property name="Label" translatable="yes">Get strings length</property>
         <property name="ShortLabel" translatable="yes">Get strings length</property>
       </action>
+      <action id="StopPANICAction">
+        <property name="Type">Action</property>
+        <property name="Label" translatable="yes">Stop/PANIC</property>
+        <property name="ShortLabel" translatable="yes">Stop/PANIC</property>
+        <signal name="Activated" handler="OnStopPANICActionActivated" />
+      </action>
     </action-group>
     <property name="MemberName" />
-    <property name="Title" translatable="yes">RPi Plotter Controller</property>
+    <property name="Title" translatable="yes">vPlotter Controller</property>
     <property name="WindowPosition">CenterOnParent</property>
     <signal name="DeleteEvent" handler="OnQuit" />
     <child>
@@ -174,13 +182,11 @@
               </node>
               <node type="Menu" action="PlotterAction">
                 <node type="Menuitem" action="PauseExecutionAction" />
-                <node type="Separator" />
-                <node type="Menuitem" action="GetStateInfoAction" />
+                <node type="Menuitem" action="StopPANICAction" />
               </node>
               <node type="Menu" action="ViewAction">
                 <node type="Menuitem" action="CommandModeAction" />
-                <node type="Menuitem" action="ControlModeAction" />
-                <node type="Menuitem" action="SVGModeAction" />
+                <node type="Menuitem" action="FileModeAction" />
                 <node type="Separator" />
                 <node type="Menuitem" action="PreviewAction" />
               </node>
@@ -206,37 +212,183 @@
             <property name="RightPadding">6</property>
             <property name="BottomPadding">6</property>
             <child>
-              <widget class="Gtk.VBox" id="contentvbox">
+              <widget class="Gtk.Notebook" id="notebook">
                 <property name="MemberName" />
-                <property name="Sensitive">False</property>
-                <property name="Spacing">6</property>
+                <property name="CanFocus">True</property>
+                <property name="CurrentPage">0</property>
+                <property name="ShowBorder">False</property>
+                <property name="ShowTabs">False</property>
                 <child>
-                  <widget class="Gtk.ScrolledWindow" id="GtkScrolledWindow">
+                  <widget class="Gtk.VBox" id="commandvbox">
                     <property name="MemberName" />
-                    <property name="ShadowType">In</property>
+                    <property name="Sensitive">False</property>
+                    <property name="Spacing">6</property>
                     <child>
-                      <widget class="Gtk.TreeView" id="commandTreeView">
+                      <widget class="Gtk.ScrolledWindow" id="GtkScrolledWindow">
                         <property name="MemberName" />
-                        <property name="CanFocus">True</property>
-                        <property name="ShowScrollbars">True</property>
-                        <property name="EnableSearch">False</property>
-                        <signal name="RowActivated" handler="OnCommandTreeViewRowActivated" />
+                        <property name="ShadowType">In</property>
+                        <child>
+                          <widget class="Gtk.TreeView" id="commandTreeView">
+                            <property name="MemberName" />
+                            <property name="CanFocus">True</property>
+                            <property name="ShowScrollbars">True</property>
+                            <property name="EnableSearch">False</property>
+                            <signal name="RowActivated" handler="OnCommandTreeViewRowActivated" />
+                          </widget>
+                        </child>
                       </widget>
+                      <packing>
+                        <property name="Position">0</property>
+                        <property name="AutoSize">True</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="Gtk.HBox" id="commandentryhbox">
+                        <property name="MemberName" />
+                        <property name="Spacing">6</property>
+                        <child>
+                          <widget class="Gtk.Label" id="label1">
+                            <property name="MemberName" />
+                            <property name="LabelProp" translatable="yes">Command:</property>
+                          </widget>
+                          <packing>
+                            <property name="Position">0</property>
+                            <property name="AutoSize">True</property>
+                            <property name="Expand">False</property>
+                            <property name="Fill">False</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <widget class="Gtk.Entry" id="commandEntry">
+                            <property name="MemberName" />
+                            <property name="CanFocus">True</property>
+                            <property name="IsEditable">True</property>
+                            <property name="MaxLength">100</property>
+                            <property name="InvisibleChar">●</property>
+                            <signal name="Activated" handler="OnCommandEntryActivated" />
+                            <signal name="Changed" handler="OnCommandEntryChanged" />
+                          </widget>
+                          <packing>
+                            <property name="Position">1</property>
+                            <property name="AutoSize">True</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <widget class="Gtk.Button" id="sendcommandButton">
+                            <property name="MemberName" />
+                            <property name="Sensitive">False</property>
+                            <property name="CanDefault">True</property>
+                            <property name="HasDefault">True</property>
+                            <property name="CanFocus">True</property>
+                            <property name="Type">TextOnly</property>
+                            <property name="Label" translatable="yes">Send</property>
+                            <property name="UseUnderline">True</property>
+                            <signal name="Clicked" handler="OnSendcommandButtonClicked" />
+                          </widget>
+                          <packing>
+                            <property name="Position">2</property>
+                            <property name="AutoSize">True</property>
+                            <property name="Expand">False</property>
+                            <property name="Fill">False</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <widget class="Gtk.Button" id="panicButton">
+                            <property name="MemberName" />
+                            <property name="CanFocus">True</property>
+                            <property name="Type">TextOnly</property>
+                            <property name="Label" translatable="yes">PANIC</property>
+                            <property name="UseUnderline">True</property>
+                            <signal name="Clicked" handler="OnPanicButtonClicked" />
+                          </widget>
+                          <packing>
+                            <property name="Position">3</property>
+                            <property name="AutoSize">True</property>
+                            <property name="Expand">False</property>
+                            <property name="Fill">False</property>
+                          </packing>
+                        </child>
+                      </widget>
+                      <packing>
+                        <property name="Position">1</property>
+                        <property name="AutoSize">True</property>
+                        <property name="Expand">False</property>
+                        <property name="Fill">False</property>
+                      </packing>
                     </child>
                   </widget>
+                </child>
+                <child>
+                  <widget class="Gtk.Label" id="label2">
+                    <property name="MemberName" />
+                    <property name="LabelProp" translatable="yes">page1</property>
+                  </widget>
                   <packing>
-                    <property name="Position">0</property>
-                    <property name="AutoSize">True</property>
+                    <property name="type">tab</property>
                   </packing>
                 </child>
                 <child>
-                  <widget class="Gtk.HBox" id="commandhbox">
+                  <widget class="Gtk.VBox" id="filevbox">
                     <property name="MemberName" />
+                    <property name="Sensitive">False</property>
                     <property name="Spacing">6</property>
                     <child>
-                      <widget class="Gtk.Label" id="label1">
+                      <widget class="Gtk.Frame" id="fileProgressFrame">
                         <property name="MemberName" />
-                        <property name="LabelProp" translatable="yes">Command:</property>
+                        <property name="Visible">False</property>
+                        <property name="ShadowType">None</property>
+                        <child>
+                          <widget class="Gtk.Alignment" id="GtkAlignment">
+                            <property name="MemberName" />
+                            <property name="Xalign">0</property>
+                            <property name="Yalign">0</property>
+                            <property name="LeftPadding">5</property>
+                            <property name="TopPadding">5</property>
+                            <property name="BottomPadding">5</property>
+                            <child>
+                              <widget class="Gtk.HBox" id="hbox2">
+                                <property name="MemberName" />
+                                <property name="Spacing">6</property>
+                                <child>
+                                  <widget class="Gtk.ProgressBar" id="fileProgressBar">
+                                    <property name="MemberName" />
+                                    <property name="Ellipsize">Middle</property>
+                                  </widget>
+                                  <packing>
+                                    <property name="Position">0</property>
+                                    <property name="AutoSize">True</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <widget class="Gtk.Button" id="cancelFileButton">
+                                    <property name="MemberName" />
+                                    <property name="CanFocus">True</property>
+                                    <property name="Type">TextOnly</property>
+                                    <property name="Label" translatable="yes">Cancel</property>
+                                    <property name="UseUnderline">True</property>
+                                    <signal name="Clicked" handler="OnCancelFileButtonClicked" />
+                                  </widget>
+                                  <packing>
+                                    <property name="Position">1</property>
+                                    <property name="AutoSize">True</property>
+                                    <property name="Expand">False</property>
+                                    <property name="Fill">False</property>
+                                  </packing>
+                                </child>
+                              </widget>
+                            </child>
+                          </widget>
+                        </child>
+                        <child>
+                          <widget class="Gtk.Label" id="fileProgressFrameLabel">
+                            <property name="MemberName" />
+                            <property name="LabelProp" translatable="yes">&lt;b&gt;Execution status&lt;/b&gt;</property>
+                            <property name="UseMarkup">True</property>
+                          </widget>
+                          <packing>
+                            <property name="type">label_item</property>
+                          </packing>
+                        </child>
                       </widget>
                       <packing>
                         <property name="Position">0</property>
@@ -246,50 +398,56 @@
                       </packing>
                     </child>
                     <child>
-                      <widget class="Gtk.Entry" id="commandEntry">
-                        <property name="MemberName" />
-                        <property name="CanFocus">True</property>
-                        <property name="IsEditable">True</property>
-                        <property name="MaxLength">5000</property>
-                        <property name="InvisibleChar">●</property>
-                        <signal name="Activated" handler="OnCommandEntryActivated" />
-                        <signal name="Changed" handler="OnCommandEntryChanged" />
-                      </widget>
-                      <packing>
-                        <property name="Position">1</property>
-                        <property name="AutoSize">True</property>
-                      </packing>
+                      <placeholder />
                     </child>
                     <child>
-                      <widget class="Gtk.Button" id="sendcommandButton">
+                      <widget class="Gtk.HBox" id="filechooserhbox">
                         <property name="MemberName" />
-                        <property name="Sensitive">False</property>
-                        <property name="CanDefault">True</property>
-                        <property name="HasDefault">True</property>
-                        <property name="CanFocus">True</property>
-                        <property name="Type">TextOnly</property>
-                        <property name="Label" translatable="yes">Send</property>
-                        <property name="UseUnderline">True</property>
-                        <signal name="Clicked" handler="OnSendcommandButtonClicked" />
+                        <property name="Spacing">6</property>
+                        <child>
+                          <widget class="Gtk.Label" id="label4">
+                            <property name="MemberName" />
+                            <property name="LabelProp" translatable="yes">File:</property>
+                          </widget>
+                          <packing>
+                            <property name="Position">0</property>
+                            <property name="AutoSize">True</property>
+                            <property name="Expand">False</property>
+                            <property name="Fill">False</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <widget class="Gtk.FileChooserButton" id="fileChooserButton">
+                            <property name="MemberName" />
+                            <property name="Title" translatable="yes">Choose *.plo file</property>
+                            <signal name="SelectionChanged" handler="OnFileChooserButtonSelectionChanged" />
+                          </widget>
+                          <packing>
+                            <property name="Position">1</property>
+                            <property name="AutoSize">True</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <widget class="Gtk.Button" id="fileSendButton">
+                            <property name="MemberName" />
+                            <property name="Sensitive">False</property>
+                            <property name="CanFocus">True</property>
+                            <property name="Type">TextOnly</property>
+                            <property name="Label" translatable="yes">Send</property>
+                            <property name="UseUnderline">True</property>
+                            <signal name="Clicked" handler="OnFileSendButtonClicked" />
+                          </widget>
+                          <packing>
+                            <property name="Position">2</property>
+                            <property name="AutoSize">True</property>
+                            <property name="Expand">False</property>
+                            <property name="Fill">False</property>
+                          </packing>
+                        </child>
                       </widget>
                       <packing>
+                        <property name="PackType">End</property>
                         <property name="Position">2</property>
-                        <property name="AutoSize">True</property>
-                        <property name="Expand">False</property>
-                        <property name="Fill">False</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <widget class="Gtk.Button" id="panicButton">
-                        <property name="MemberName" />
-                        <property name="CanFocus">True</property>
-                        <property name="Type">TextOnly</property>
-                        <property name="Label" translatable="yes">PANIC!</property>
-                        <property name="UseUnderline">True</property>
-                        <signal name="Clicked" handler="OnPanicButtonClicked" />
-                      </widget>
-                      <packing>
-                        <property name="Position">3</property>
                         <property name="AutoSize">True</property>
                         <property name="Expand">False</property>
                         <property name="Fill">False</property>
@@ -298,9 +456,15 @@
                   </widget>
                   <packing>
                     <property name="Position">1</property>
-                    <property name="AutoSize">True</property>
-                    <property name="Expand">False</property>
-                    <property name="Fill">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="Gtk.Label" id="label3">
+                    <property name="MemberName" />
+                    <property name="LabelProp" translatable="yes">page2</property>
+                  </widget>
+                  <packing>
+                    <property name="type">tab</property>
                   </packing>
                 </child>
               </widget>
@@ -314,7 +478,7 @@
         <child>
           <widget class="Gtk.Statusbar" id="statusbar2">
             <property name="MemberName" />
-            <property name="Spacing">6</property>
+            <property name="Spacing">12</property>
             <child>
               <widget class="Gtk.Alignment" id="connectStatusAlignment">
                 <property name="MemberName" />
@@ -354,6 +518,36 @@
               </widget>
               <packing>
                 <property name="Position">0</property>
+                <property name="AutoSize">True</property>
+                <property name="Expand">False</property>
+                <property name="Fill">False</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="Gtk.Label" id="stringsLengthLabel">
+                <property name="MemberName" />
+                <property name="Visible">False</property>
+                <property name="LabelProp" translatable="yes">strings length</property>
+                <property name="UseMarkup">True</property>
+              </widget>
+              <packing>
+                <property name="PackType">End</property>
+                <property name="Position">2</property>
+                <property name="AutoSize">True</property>
+                <property name="Expand">False</property>
+                <property name="Fill">False</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="Gtk.Label" id="coordLabel">
+                <property name="MemberName" />
+                <property name="Visible">False</property>
+                <property name="LabelProp" translatable="yes">coordinates</property>
+                <property name="UseMarkup">True</property>
+              </widget>
+              <packing>
+                <property name="PackType">End</property>
+                <property name="Position">3</property>
                 <property name="AutoSize">True</property>
                 <property name="Expand">False</property>
                 <property name="Fill">False</property>
