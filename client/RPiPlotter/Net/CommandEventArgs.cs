@@ -5,21 +5,19 @@ using System.Text;
 
 namespace RPiPlotter.Net
 {
-    public class CommandEventArgs : EventArgs
+    public class CommandEventArgs : MessageEventArgs
     {
         public int CommandIndex { get; private set; }
 
-        public string Message { get; private set; }
-
         public CommandEventArgs(int commandIndex)
+            : this(commandIndex, string.Empty)
         {
-            CommandIndex = commandIndex;
         }
 
         public CommandEventArgs(int commandIndex, string message)
-            : this(commandIndex)
+            : base(message)
         {
-            Message = message;
+            CommandIndex = commandIndex;
         }
     }
 }

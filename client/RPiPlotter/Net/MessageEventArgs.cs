@@ -2,15 +2,15 @@
 
 namespace RPiPlotter.Net
 {
-    public class MessageReceivedEventArgs
+    public class MessageEventArgs
     {
         public string Message
         {
             get;
-            private set;
+            protected set;
         }
 
-        public MessageReceivedEventArgs(string message)
+        public MessageEventArgs(string message)
         {
             Message = message;
         }

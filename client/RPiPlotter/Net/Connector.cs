@@ -3,13 +3,15 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Text;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace RPiPlotter.Net
 {
     public delegate void CommandEventHandler(object sender,CommandEventArgs e);
     public delegate void CommandDoneEventHandler(object sender,CommandDoneEventArgs e);
     public delegate void DisconnectedEventHandler(object sender,DisconnectedEventArgs e);
-    public delegate void MessageReceivedEventHandler(object sender,MessageReceivedEventArgs e);
+    public delegate void MessageEventHandler(object sender,MessageEventArgs e);
+    public delegate void ProgressEventHandler(object sender,ProgressEventArgs e);
 
     public class Connector
     {
@@ -33,8 +35,11 @@ namespace RPiPlotter.Net
         public event CommandEventHandler CommandExecuting;
         public event CommandEventHandler CommandFail;
         public event CommandDoneEventHandler CommandDone;
-        public event MessageReceivedEventHandler MessageReceived;
-
+        public event MessageEventHandler MessageReceived;
+        public event EventHandler FileSended;
+        public event ProgressEventHandler FileProgress;
+        public event EventHandler FileCompleted;
+        public event MessageEventHandler FileError;
 
         TcpClient client;
         Thread receiverThread, checkThread;
@@ -79,83 +84,109 @@ namespace RPiPlotter.Net
                 });
             checkThread.Start();
 
-            receiverThread = new Thread(() =>
-                {
-                    var stream = client.GetStream();
-                    while (IsConnected)
-                    {
-                        var readBuffer = new byte[16384];
-                        int bytesCount = 0;
-                        try
-                        {
-                            bytesCount = stream.Read(readBuffer, 0, readBuffer.Length);
-                        }
-                        catch (Exception)
-                        {
-                            return;
-                        }
-                        if (bytesCount == 0)
-                        {
-                            if (IsConnected)
-                                Disconnect(true);
-                            return;
-                        }
-                        string message = Encoding.UTF8.GetString(readBuffer, 0, bytesCount);
-
-                        foreach (string msg in message.Split(new string[] {";;"}, StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            if (!msg.Contains("|"))
-                                continue;
-
-                            var msgParts = msg.Split('|');
-                            if (msgParts[0] == "OK")
-                            {
-                                if (CommandDone != null)
-                                {
-                                    CommandDoneEventArgs commandArgs = null;
-                                    var cmdIndex = int.Parse(msgParts[1]);
-                                    commandArgs = msgParts.Length == 4 ?
-                                        new CommandDoneEventArgs(cmdIndex, msgParts[2], msgParts[3]) : 
-                                        new CommandDoneEventArgs(cmdIndex, msgParts[2]);
-
-                                    Gtk.Application.Invoke((sender, e) => CommandDone(this, commandArgs));
-                                }
-                            }
-                            else if (msgParts[0] == "ERR")
-                            {
-                                if (CommandFail != null)
-                                {
-                                    CommandEventArgs commandArgs = null;
-                                    var cmdIndex = int.Parse(msgParts[1]);
-                                    commandArgs = msgParts.Length == 3 ?
-                                        new CommandEventArgs(cmdIndex, msgParts[2]) : 
-                                        new CommandEventArgs(cmdIndex);
-
-                                    Gtk.Application.Invoke((sender, e) => CommandFail(this, commandArgs));
-                                }
-                            }
-                            else if (msgParts[0] == "EXEC")
-                            {
-                                if (CommandExecuting != null)
-                                {
-                                    var commandArgs = new CommandEventArgs(int.Parse(msgParts[1]));
-                                    Gtk.Application.Invoke((sender, e) => CommandExecuting(this, commandArgs));
-                                }
-                            }
-                            else if (msgParts[0] == "MSG")
-                            {
-                                if (MessageReceived != null)
-                                {
-                                    var commandArgs = new MessageReceivedEventArgs(msgParts[1]);
-                                    Gtk.Application.Invoke((sender, e) => MessageReceived(this, commandArgs));
-                                }
-                            }
-                        }
-                    }
-                });
+            receiverThread = new Thread(Receive);
             receiverThread.Start();
             if (Connected != null)
                 Connected(this, new EventArgs());
+        }
+
+        void Receive()
+        {
+            var stream = client.GetStream();
+            while (IsConnected)
+            {
+                var readBuffer = new byte[16384];
+                int bytesCount = 0;
+                try
+                {
+                    bytesCount = stream.Read(readBuffer, 0, readBuffer.Length);
+                }
+                catch (Exception)
+                {
+                    return;
+                }
+                if (bytesCount == 0)
+                {
+                    if (IsConnected)
+                        Disconnect(true);
+                    return;
+                }
+                string message = Encoding.UTF8.GetString(readBuffer, 0, bytesCount);
+
+                foreach (string msg in message.Split(new string[] {";;"}, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (!msg.Contains("|"))
+                        continue;
+
+                    var msgParts = msg.Split('|');
+                    if (msgParts[0] == "OK")
+                    {
+                        if (CommandDone != null)
+                        {
+                            CommandDoneEventArgs commandArgs = null;
+                            var cmdIndex = int.Parse(msgParts[1]);
+                            commandArgs = msgParts.Length == 4 ?
+                                new CommandDoneEventArgs(cmdIndex, msgParts[2], msgParts[3]) : 
+                                new CommandDoneEventArgs(cmdIndex, msgParts[2]);
+
+                            Gtk.Application.Invoke((sender, e) => CommandDone(this, commandArgs));
+                        }
+                    }
+                    else if (msgParts[0] == "ERR")
+                    {
+                        if (CommandFail != null)
+                        {
+                            CommandEventArgs commandArgs = null;
+                            var cmdIndex = int.Parse(msgParts[1]);
+                            commandArgs = msgParts.Length == 3 ?
+                                new CommandEventArgs(cmdIndex, msgParts[2]) : 
+                                new CommandEventArgs(cmdIndex);
+
+                            Gtk.Application.Invoke((sender, e) => CommandFail(this, commandArgs));
+                        }
+                    }
+                    else if (msgParts[0] == "EXEC")
+                    {
+                        if (CommandExecuting != null)
+                        {
+                            var commandArgs = new CommandEventArgs(int.Parse(msgParts[1]));
+                            Gtk.Application.Invoke((sender, e) => CommandExecuting(this, commandArgs));
+                        }
+                    }
+                    else if (msgParts[0] == "MSG")
+                    {
+                        if (MessageReceived != null)
+                        {
+                            var commandArgs = new MessageEventArgs(msgParts[1]);
+                            Gtk.Application.Invoke((sender, e) => MessageReceived(this, commandArgs));
+                        }
+                    }
+                    else if (msgParts[0] == "FILE")
+                    {
+                        switch (msgParts[1])
+                        {
+                            case "DONE":
+                                if (FileCompleted != null)
+                                    Gtk.Application.Invoke((sender, e) => FileCompleted(this, new EventArgs()));
+                                break;
+                            case "FAIL":
+                                if (FileError != null)
+                                {
+                                    var args = new MessageEventArgs(msgParts.Length == 3 ? msgParts[2] : string.Empty);
+                                    Gtk.Application.Invoke((sender, e) => FileError(this, args));
+                                }
+                                break;
+                            case "PROGRESS":
+                                if (FileProgress != null)
+                                {
+                                    Gtk.Application.Invoke((sender, e) => FileProgress(this,
+                                            new ProgressEventArgs(int.Parse(msgParts[2]), int.Parse(msgParts[3]))));
+                                }
+                                break;
+                        }
+                    }
+                }
+            }
         }
 
         public void Disconnect(bool serverDisconnect = false)
@@ -200,6 +231,24 @@ namespace RPiPlotter.Net
                 return -1;
             }
             return _counter++;
+        }
+
+        public void SendFile(string filename)
+        {
+            using (var sr = new StreamReader(filename))
+            {
+                var content = sr.ReadToEnd();
+                content = Regex.Replace(content, @"(\s{2,}|[\t\n\r])|(^#.*)", "", RegexOptions.Multiline);
+                content = "FILE|" + content + "|END";
+                var buffer = Encoding.ASCII.GetBytes(content);
+                client.Client.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, (IAsyncResult ar) =>
+                    {
+                        if (FileSended != null)
+                            FileSended(this, new EventArgs());
+                    }, null);
+            }
+
+
         }
     }
 }
