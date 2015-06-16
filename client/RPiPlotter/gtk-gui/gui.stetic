@@ -154,6 +154,12 @@
         <property name="Label" translatable="yes">Get strings length</property>
         <property name="ShortLabel" translatable="yes">Get strings length</property>
       </action>
+      <action id="StopPANICAction">
+        <property name="Type">Action</property>
+        <property name="Label" translatable="yes">Stop/PANIC</property>
+        <property name="ShortLabel" translatable="yes">Stop/PANIC</property>
+        <signal name="Activated" handler="OnStopPANICActionActivated" />
+      </action>
     </action-group>
     <property name="MemberName" />
     <property name="Title" translatable="yes">vPlotter Controller</property>
@@ -176,8 +182,7 @@
               </node>
               <node type="Menu" action="PlotterAction">
                 <node type="Menuitem" action="PauseExecutionAction" />
-                <node type="Separator" />
-                <node type="Menuitem" action="GetStateInfoAction" />
+                <node type="Menuitem" action="StopPANICAction" />
               </node>
               <node type="Menu" action="ViewAction">
                 <node type="Menuitem" action="CommandModeAction" />
@@ -210,7 +215,7 @@
               <widget class="Gtk.Notebook" id="notebook">
                 <property name="MemberName" />
                 <property name="CanFocus">True</property>
-                <property name="CurrentPage">1</property>
+                <property name="CurrentPage">0</property>
                 <property name="ShowBorder">False</property>
                 <property name="ShowTabs">False</property>
                 <child>
@@ -260,8 +265,8 @@
                             <property name="IsEditable">True</property>
                             <property name="MaxLength">100</property>
                             <property name="InvisibleChar">●</property>
-                            <signal name="Changed" handler="OnCommandEntryChanged" />
                             <signal name="Activated" handler="OnCommandEntryActivated" />
+                            <signal name="Changed" handler="OnCommandEntryChanged" />
                           </widget>
                           <packing>
                             <property name="Position">1</property>
@@ -292,7 +297,7 @@
                             <property name="MemberName" />
                             <property name="CanFocus">True</property>
                             <property name="Type">TextOnly</property>
-                            <property name="Label" translatable="yes">PANIC!</property>
+                            <property name="Label" translatable="yes">PANIC</property>
                             <property name="UseUnderline">True</property>
                             <signal name="Clicked" handler="OnPanicButtonClicked" />
                           </widget>
@@ -473,7 +478,7 @@
         <child>
           <widget class="Gtk.Statusbar" id="statusbar2">
             <property name="MemberName" />
-            <property name="Spacing">6</property>
+            <property name="Spacing">12</property>
             <child>
               <widget class="Gtk.Alignment" id="connectStatusAlignment">
                 <property name="MemberName" />
@@ -513,6 +518,36 @@
               </widget>
               <packing>
                 <property name="Position">0</property>
+                <property name="AutoSize">True</property>
+                <property name="Expand">False</property>
+                <property name="Fill">False</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="Gtk.Label" id="stringsLengthLabel">
+                <property name="MemberName" />
+                <property name="Visible">False</property>
+                <property name="LabelProp" translatable="yes">strings length</property>
+                <property name="UseMarkup">True</property>
+              </widget>
+              <packing>
+                <property name="PackType">End</property>
+                <property name="Position">2</property>
+                <property name="AutoSize">True</property>
+                <property name="Expand">False</property>
+                <property name="Fill">False</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="Gtk.Label" id="coordLabel">
+                <property name="MemberName" />
+                <property name="Visible">False</property>
+                <property name="LabelProp" translatable="yes">coordinates</property>
+                <property name="UseMarkup">True</property>
+              </widget>
+              <packing>
+                <property name="PackType">End</property>
+                <property name="Position">3</property>
                 <property name="AutoSize">True</property>
                 <property name="Expand">False</property>
                 <property name="Fill">False</property>

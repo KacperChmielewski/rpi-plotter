@@ -96,6 +96,8 @@ namespace RPiPlotter.Windows
             filevbox.Sensitive = false;
             PauseExecutionAction.Sensitive = false;
             ServerInfoAction.Sensitive = false;
+            coordLabel.Visible = false;
+            stringsLengthLabel.Visible = false;
             connectStatusLabel.Text = "Disconnected";
             connectStatusImage.Pixbuf = disconnectedPixbuf;
             commandListStore.Clear();
@@ -150,6 +152,7 @@ namespace RPiPlotter.Windows
                 connector.FileError += HandleFileError;
                 connector.FileProgress += HandleFileProgress;
                 connector.FileSended += HandleFileSended;
+                connector.CoordReported += HandleCoordReported;
 
                 try
                 {
@@ -169,6 +172,7 @@ namespace RPiPlotter.Windows
             };
             connectDialog.Run();
         }
+
 
         #region Connector Events
 
@@ -202,6 +206,16 @@ namespace RPiPlotter.Windows
                 dialog.Run();
                 dialog.Destroy();
             }
+        }
+
+        void HandleCoordReported(object sender, ReportEventArgs e)
+        {
+            if (!coordLabel.Visible)
+                coordLabel.Visible = true;
+            if (!stringsLengthLabel.Visible)
+                stringsLengthLabel.Visible = true;
+            coordLabel.Markup = "<b>Coord:</b> " + e.Coordinates;
+            stringsLengthLabel.Markup = "<b>Strings:</b> " + e.Length;
         }
 
         #endregion
@@ -288,7 +302,7 @@ namespace RPiPlotter.Windows
                                  Gtk.DialogFlags.DestroyWithParent, 
                                  Gtk.MessageType.Info, 
                                  Gtk.ButtonsType.Ok,
-                                 "Server: " + e.Message);
+                                 e.Message);
                 dialog.Run();
                 dialog.Destroy();
             }
@@ -440,11 +454,6 @@ namespace RPiPlotter.Windows
             connector.SendServerCommand("INFO");
         }
 
-        protected void OnGetStateInfoActionActivated(object sender, EventArgs e)
-        {
-            connector.SendServerCommand("STATE");
-        }
-
         void OnCommandModeActionToggled(object sender, EventArgs e)
         {
             notebook.Page = 0;
@@ -462,6 +471,11 @@ namespace RPiPlotter.Windows
         }
 
         void OnCancelFileButtonClicked(object sender, EventArgs e)
+        {
+            connector.SendServerCommand("PANIC");
+        }
+
+        void OnStopPANICActionActivated(object sender, EventArgs e)
         {
             connector.SendServerCommand("PANIC");
         }

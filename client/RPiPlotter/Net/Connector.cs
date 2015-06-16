@@ -4,6 +4,7 @@ using System.Threading;
 using System.Text;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Globalization;
 
 namespace RPiPlotter.Net
 {
@@ -12,6 +13,7 @@ namespace RPiPlotter.Net
     public delegate void DisconnectedEventHandler(object sender,DisconnectedEventArgs e);
     public delegate void MessageEventHandler(object sender,MessageEventArgs e);
     public delegate void ProgressEventHandler(object sender,ProgressEventArgs e);
+    public delegate void ReportEventHandler(object sender,ReportEventArgs e);
 
     public class Connector
     {
@@ -40,6 +42,7 @@ namespace RPiPlotter.Net
         public event ProgressEventHandler FileProgress;
         public event EventHandler FileCompleted;
         public event MessageEventHandler FileError;
+        public event ReportEventHandler CoordReported;
 
         TcpClient client;
         Thread receiverThread, checkThread;
@@ -92,6 +95,9 @@ namespace RPiPlotter.Net
 
         void Receive()
         {
+            var ci = (CultureInfo)Thread.CurrentThread.CurrentCulture.Clone();
+            ci.NumberFormat.CurrencyDecimalSeparator = ".";
+            Thread.CurrentThread.CurrentCulture = ci;
             var stream = client.GetStream();
             while (IsConnected)
             {
@@ -159,6 +165,14 @@ namespace RPiPlotter.Net
                         {
                             var commandArgs = new MessageEventArgs(msgParts[1]);
                             Gtk.Application.Invoke((sender, e) => MessageReceived(this, commandArgs));
+                        }
+                    }
+                    else if (msgParts[0] == "COR")
+                    {
+                        if (CoordReported != null)
+                        {
+                            var commandArgs = new ReportEventArgs(msgParts[1], msgParts[2]);
+                            Gtk.Application.Invoke(((sender, e) => CoordReported(this, commandArgs)));
                         }
                     }
                     else if (msgParts[0] == "FILE")

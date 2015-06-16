@@ -15,6 +15,7 @@ queue = Queue()
 starttime = None
 logger = None
 plotter = None
+isExecuting = False
 
 
 class TCPPlotterListener(socketserver.BaseRequestHandler):
@@ -23,9 +24,24 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
 
     def handle(self):
         global socket
+        socket = self.request
+
+        def reporting_thread():
+            reportcoord()
+            while socket:
+                time.sleep(0.25)
+                if not isExecuting:
+                    continue
+                try:
+                    reportcoord()
+                except OSError:
+                    break
+
+        report_thread = threading.Thread(target=reporting_thread)
+        report_thread.setDaemon(True)
+        report_thread.start()
+        logger.info("{}:{} connected!".format(self.client_address[0], self.client_address[1]))
         try:
-            logger.info("{}:{} connected!".format(self.client_address[0], self.client_address[1]))
-            socket = self.request
             while True:
                 data = socket.recv(1024)
                 if data == b'\x01':
@@ -41,8 +57,6 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
                     plotter.setexecpause(True)
                 elif m == "!UNPAUSE":
                     plotter.setexecpause(False)
-                elif m == "!STATE":
-                    self.sendstate()
                 elif m == "!INFO":
                     self.sendinfo()
                 elif m.startswith("FILE|"):
@@ -60,17 +74,11 @@ class TCPPlotterListener(socketserver.BaseRequestHandler):
             logger.error(str(e))
         finally:
             queue.queue.clear()
+            plotter.stopexecute()
             socket.close()
+            socket = None
             logger.info(self.client_address[0] + " disconnected!")
-
-    def sendstate(self):
-        info = "<b>Coordinate:</b> {0[0]:.2f}, {0[1]:.2f}\n" \
-               "<b>Strings length:</b>\n\tLeft: {1[0]:.2f}\n\tRight: {1[1]:.2f}".format(plotter.getcoord(), hw.length)
-        logger.debug(info)
-        try:
-            self.request.sendall(bytes("MSG|" + info + ';;', "utf-8"))
-        except OSError:
-            pass
+            report_thread.join()
 
     def sendinfo(self):
         import platform
@@ -107,17 +115,27 @@ def serve():
         logger.error(str(ex) + " - {}:{}".format(host, str(port)))
 
 
+def reportcoord():
+    if socket:
+        msg = "COR|{0[0]:.2f}, {0[1]:.2f}|{1[0]:.0f}, {1[1]:.0f}".format(plotter.getcoord(), hw.length)
+        socket.sendall(bytes(msg, "utf-8"))
+
+
 def process():
-    global starttime
+    global starttime, isExecuting
     starttime = datetime.datetime.now()
     thread = threading.Thread(target=serve)
     thread.setDaemon(True)
     thread.start()
     while thread.isAlive:
         if queue.empty():
+            if isExecuting:
+                isExecuting = False
             time.sleep(0.1)
             continue
 
+        if not isExecuting:
+            isExecuting = True
         info, msg = '', ''
         index, command = queue.get()
         if index == "FILE":
@@ -150,14 +168,15 @@ def process():
                 socket.sendall(bytes(execmsg + ';;', "utf-8"))
             except OSError:
                 continue
-            # TODO: report position
             success = False
 
             begintime = time.time()
             try:
+                counter = 1
                 for result in plotter.execute(command):
                     if result:
-                        msg += str(result) + '\n'
+                        msg += "{}. {}\n".format(counter, result)
+                        counter += 1
                         logger.info(str(result))
                 success = True
             except NotCalibratedError as ex:
@@ -183,6 +202,7 @@ def process():
         logger.debug(info)
         try:
             socket.sendall(bytes(info + ';;', "utf-8"))
+            reportcoord()
         except OSError:
             continue
 

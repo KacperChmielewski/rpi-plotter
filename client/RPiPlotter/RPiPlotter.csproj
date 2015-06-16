@@ -76,6 +76,7 @@
     <Compile Include="gtk-gui\RPiPlotter.Windows.MainWindow.cs" />
     <Compile Include="Net\ProgressEventArgs.cs" />
     <Compile Include="Net\MessageEventArgs.cs" />
+    <Compile Include="Net\ReportEventArgs.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
