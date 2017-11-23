@@ -5,6 +5,7 @@ try:
     import RPi.GPIO as GPIO
 except ImportError:
     import fakeGPIO as GPIO
+    print("Using fake GPIO")
 
 length = [0, 0]
 
