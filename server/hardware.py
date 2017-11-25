@@ -214,7 +214,7 @@ class Plotter:
 
         if self.getdebug():
             print("Initializing separator...")
-        self.separator = Servo(23)
+        self.separator = Servo(7)
 
         self.setpower(power)
         self.commands = {
