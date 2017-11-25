@@ -7,3 +7,8 @@ The server software is written in Python and contains three front-ends:
 - TCP/IP server (for remote controlling)
 
 The client software is written in Mono/C# and is used only with TCP/IP server. It can be used for sending commands, sending .plo files or drawing a figures (soon). 
+
+
+```
+sudo apt-get install python-rpi.gpio python3-rpi.gpio
+```
